@@ -3,1427 +3,886 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Family Expense Manager - Advanced</title>
-
-    <!-- Firebase COMPAT scripts -->
+    <title>Family Expense Manager</title>
     <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-database-compat.js"></script>
-    
-    <!-- Chart.js for graphs -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
-    
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        html {
-            scroll-behavior: smooth;
-        }
-
+        * { margin:0; padding:0; box-sizing:border-box; }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 10px;
+            font-family:'Segoe UI',sans-serif;
+            background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+            min-height:100vh; padding:10px;
         }
+        .hidden { display:none !important; }
+        .container { max-width:1200px; margin:0 auto; }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .hidden {
-            display: none !important;
-        }
-
-        /* ============ AUTH PAGE ============ */
+        /* ── AUTH ── */
         .auth-page {
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            max-width: 400px;
-            margin: 50px auto;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            background:white; border-radius:15px; padding:30px;
+            max-width:400px; margin:50px auto;
+            box-shadow:0 10px 40px rgba(0,0,0,.2);
         }
-
-        .auth-page h2 {
-            color: #333;
-            margin-bottom: 20px;
-            text-align: center;
-            font-size: 24px;
+        .auth-page h2 { color:#333; margin-bottom:20px; text-align:center; font-size:24px; }
+        .form-group { margin-bottom:15px; }
+        .form-group label { display:block; margin-bottom:5px; color:#555; font-weight:500; }
+        .form-group input,.form-group select,.form-group textarea {
+            width:100%; padding:12px; border:2px solid #ddd;
+            border-radius:8px; font-size:14px; transition:border-color .3s;
+            font-family:inherit;
         }
-
-        .form-group {
-            margin-bottom: 15px;
+        .form-group input:focus,.form-group select:focus,.form-group textarea:focus {
+            outline:none; border-color:#667eea;
         }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            color: #555;
-            font-weight: 500;
-        }
-
-        .form-group input {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 14px;
-            transition: border-color 0.3s;
-        }
-
-        .form-group input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        .button-group {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-top: 20px;
-        }
+        .form-group textarea { resize:vertical; min-height:70px; }
+        .btn-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:20px; }
 
         button {
-            padding: 12px 20px;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
+            padding:12px 20px; border:none; border-radius:8px;
+            font-size:14px; font-weight:600; cursor:pointer; transition:all .3s;
+            font-family:inherit;
         }
+        .btn-primary { background:#667eea; color:white; }
+        .btn-primary:hover { background:#5568d3; transform:translateY(-1px); }
+        .btn-secondary { background:#f0f0f0; color:#333; }
+        .btn-secondary:hover { background:#e0e0e0; }
+        .btn-full { grid-column:1/-1; }
+        .btn-danger  { background:#ff6b6b; color:white; padding:7px 12px; font-size:12px; border-radius:6px; }
+        .btn-danger:hover  { background:#ff4f4f; }
+        .btn-edit    { background:#4caf50; color:white; padding:7px 12px; font-size:12px; border-radius:6px; }
+        .btn-edit:hover    { background:#43a047; }
+        .btn-close   { background:none; border:none; font-size:26px; cursor:pointer; color:#999; line-height:1; }
 
-        .btn-primary {
-            background: #667eea;
-            color: white;
-            grid-column: 1 / -1;
-        }
+        .msg { padding:10px; border-radius:8px; margin-bottom:12px; display:none; font-size:13px; }
+        .msg.error   { background:#fee; color:#c33; }
+        .msg.success { background:#efe; color:#393; }
+        .toggle-link { text-align:center; margin-top:16px; font-size:13px; color:#666; }
+        .toggle-link a { color:#667eea; cursor:pointer; text-decoration:underline; }
 
-        .btn-primary:hover {
-            background: #5568d3;
-            transform: translateY(-2px);
-        }
-
-        .btn-secondary {
-            background: #f0f0f0;
-            color: #333;
-        }
-
-        .btn-secondary:hover {
-            background: #e0e0e0;
-        }
-
-        .btn-small {
-            padding: 8px 12px;
-            font-size: 12px;
-        }
-
-        .btn-danger {
-            background: #ff6b6b;
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #ff5252;
-        }
-
-        .btn-edit {
-            background: #4caf50;
-            color: white;
-        }
-
-        .btn-edit:hover {
-            background: #45a049;
-        }
-
-        /* ============ HOME PAGE ============ */
-        .home-page {
-            padding: 20px 0;
-        }
-
+        /* ── HEADER ── */
+        .home-page { padding:20px 0; }
         .header {
-            background: white;
-            padding: 15px 20px;
-            border-radius: 15px;
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            flex-wrap: wrap;
-            gap: 10px;
+            background:white; padding:15px 20px; border-radius:15px;
+            margin-bottom:20px; display:flex; justify-content:space-between;
+            align-items:center; box-shadow:0 5px 15px rgba(0,0,0,.1);
+            flex-wrap:wrap; gap:10px;
         }
-
-        .header h1 {
-            color: #333;
-            font-size: 20px;
-        }
-
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
-
-        .user-info p {
-            color: #666;
-            font-size: 12px;
-        }
-
+        .header h1 { color:#333; font-size:20px; }
+        .user-info  { display:flex; align-items:center; gap:15px; flex-wrap:wrap; }
+        .user-info p { color:#666; font-size:12px; }
         .family-code {
-            background: #667eea;
-            color: white;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 600;
+            background:#667eea; color:white; padding:6px 12px;
+            border-radius:20px; font-size:11px; font-weight:600;
         }
+        .btn-logout { background:#ff6b6b; color:white; padding:8px 16px; font-size:13px; }
+        .btn-logout:hover { background:#ff4f4f; }
 
-        .btn-logout {
-            background: #ff6b6b;
-            color: white;
-            padding: 8px 15px;
-        }
-
-        /* ============ DASHBOARD ============ */
-        .dashboard {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
-            margin-bottom: 30px;
-        }
-
+        /* ── KPI CARDS ── */
+        .dashboard { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:15px; margin-bottom:25px; }
         .stat-card {
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            text-align: center;
+            background:white; padding:20px; border-radius:12px;
+            box-shadow:0 5px 15px rgba(0,0,0,.1); text-align:center;
+            cursor:pointer; transition:transform .2s,box-shadow .2s;
+            position:relative;
         }
-
-        .stat-card.income {
-            border-top: 4px solid #4caf50;
+        .stat-card:hover { transform:translateY(-3px); box-shadow:0 8px 25px rgba(0,0,0,.15); }
+        .stat-card::after {
+            content:'👁 tap to view'; position:absolute; bottom:6px; right:10px;
+            font-size:9px; color:#bbb; font-weight:400;
         }
+        .stat-card.income  { border-top:4px solid #4caf50; }
+        .stat-card.expense { border-top:4px solid #ff6b6b; }
+        .stat-card.balance { border-top:4px solid #667eea; }
+        .stat-card.savings { border-top:4px solid #ff9800; }
+        .stat-label { color:#999; font-size:12px; margin-bottom:8px; font-weight:500; }
+        .stat-value { font-size:22px; font-weight:bold; color:#333; }
 
-        .stat-card.expense {
-            border-top: 4px solid #ff6b6b;
-        }
-
-        .stat-card.balance {
-            border-top: 4px solid #667eea;
-        }
-
-        .stat-card.savings {
-            border-top: 4px solid #ff9800;
-        }
-
-        .stat-label {
-            color: #999;
-            font-size: 12px;
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
-
-        .stat-value {
-            font-size: 24px;
-            font-weight: bold;
-            color: #333;
-        }
-
-        /* ============ TABS ============ */
-        .tabs {
-            background: white;
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
-
-        .tab-buttons {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-            background: #f5f5f5;
-            gap: 0;
-        }
-
+        /* ── TABS ── */
+        .tabs { background:white; border-radius:15px; overflow:hidden; box-shadow:0 5px 15px rgba(0,0,0,.1); }
+        .tab-buttons { display:grid; grid-template-columns:repeat(auto-fit,minmax(70px,1fr)); background:#f5f5f5; }
         .tab-button {
-            padding: 12px 8px;
-            border: none;
-            background: none;
-            cursor: pointer;
-            font-weight: 600;
-            color: #999;
-            border-bottom: 3px solid transparent;
-            transition: all 0.3s;
-            font-size: 13px;
+            padding:13px 6px; border:none; background:none; cursor:pointer;
+            font-weight:600; color:#999; border-bottom:3px solid transparent;
+            transition:all .3s; font-size:12px;
         }
+        .tab-button.active { color:#667eea; border-bottom-color:#667eea; background:white; }
+        .tab-content { padding:20px; display:none; }
+        .tab-content.active { display:block; }
 
-        .tab-button.active {
-            color: #667eea;
-            border-bottom-color: #667eea;
+        /* ── TRANSACTION LIST ── */
+        .tx-list { display:flex; flex-direction:column; gap:10px; }
+        .tx-item {
+            background:#f9f9f9; border-radius:10px;
+            border-left:4px solid #667eea; overflow:hidden;
         }
-
-        .tab-content {
-            padding: 20px;
-            display: none;
-            max-height: 800px;
-            overflow-y: auto;
+        .tx-item.income  { border-left-color:#4caf50; }
+        .tx-item.expense { border-left-color:#ff6b6b; }
+        .tx-main {
+            display:flex; justify-content:space-between; align-items:flex-start;
+            padding:12px 15px; gap:10px; flex-wrap:wrap;
         }
-
-        .tab-content.active {
-            display: block;
+        .tx-left { flex:1; min-width:0; }
+        .tx-title { font-weight:700; color:#333; font-size:14px; margin-bottom:3px; }
+        .tx-meta  { font-size:11px; color:#999; margin-bottom:4px; }
+        .tx-desc  {
+            font-size:12px; color:#555; background:white;
+            padding:5px 8px; border-radius:5px; border-left:3px solid #ddd;
+            margin-top:5px; font-style:italic;
         }
+        .tx-right { display:flex; flex-direction:column; align-items:flex-end; gap:6px; flex-shrink:0; }
+        .tx-amount { font-weight:700; font-size:15px; }
+        .tx-amount.income  { color:#4caf50; }
+        .tx-amount.expense { color:#ff6b6b; }
+        .tx-actions { display:flex; gap:5px; }
+        .empty-state { text-align:center; padding:40px; color:#bbb; font-size:14px; }
 
-        /* ============ SEARCH & FILTER ============ */
-        .search-bar {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-
-        .search-bar input,
-        .search-bar select {
-            padding: 10px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 13px;
-            flex: 1;
-            min-width: 120px;
-        }
-
-        .search-bar button {
-            padding: 10px 15px;
-            background: #667eea;
-            color: white;
-            font-size: 13px;
-        }
-
-        /* ============ CHARTS ============ */
-        .charts-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-
-        .chart-container {
-            background: #f9f9f9;
-            padding: 20px;
-            border-radius: 12px;
-            position: relative;
-            height: 300px;
-        }
-
-        .chart-title {
-            color: #333;
-            font-weight: 600;
-            margin-bottom: 15px;
-            font-size: 14px;
-        }
-
-        canvas {
-            max-height: 250px;
-        }
-
-        /* ============ SAVINGS GOAL ============ */
-        .goal-section {
-            background: #f9f9f9;
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            border-left: 5px solid #ff9800;
-        }
-
-        .goal-section h3 {
-            color: #333;
-            margin-bottom: 15px;
-            font-size: 16px;
-        }
-
-        .goal-form {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        .goal-form input {
-            padding: 10px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 13px;
-        }
-
-        .goal-form button {
-            grid-column: 1 / -1;
-            background: #ff9800;
-            color: white;
-            padding: 10px;
-        }
-
-        .goal-display {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-        }
-
-        .goal-label {
-            color: #666;
-            font-size: 13px;
-            margin-bottom: 10px;
-        }
-
-        .goal-progress {
-            width: 100%;
-            height: 20px;
-            background: #e0e0e0;
-            border-radius: 10px;
-            overflow: hidden;
-            margin-bottom: 10px;
-        }
-
-        .goal-progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #ff9800, #ffc107);
-            transition: width 0.3s;
-        }
-
-        .goal-stats {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-            font-size: 13px;
-        }
-
-        .goal-stat {
-            background: #f0f0f0;
-            padding: 10px;
-            border-radius: 6px;
-        }
-
-        .goal-stat-label {
-            color: #999;
-            font-size: 11px;
-        }
-
-        .goal-stat-value {
-            color: #333;
-            font-weight: 600;
-            font-size: 14px;
-        }
-
-        /* ============ TRANSACTIONS LIST ============ */
-        .transactions-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .transaction-item {
-            background: #f9f9f9;
-            padding: 12px;
-            border-radius: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-left: 4px solid #667eea;
-            transition: all 0.3s;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .transaction-item:hover {
-            background: #f0f0f0;
-        }
-
-        .transaction-item.income {
-            border-left-color: #4caf50;
-        }
-
-        .transaction-item.expense {
-            border-left-color: #ff6b6b;
-        }
-
-        .transaction-info h4 {
-            color: #333;
-            margin-bottom: 3px;
-            font-size: 13px;
-        }
-
-        .transaction-info p {
-            color: #999;
-            font-size: 11px;
-        }
-
-        .transaction-amount {
-            font-weight: bold;
-            font-size: 14px;
-        }
-
-        .transaction-amount.income {
-            color: #4caf50;
-        }
-
-        .transaction-amount.expense {
-            color: #ff6b6b;
-        }
-
-        .transaction-actions {
-            display: flex;
-            gap: 5px;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: #999;
-            font-size: 14px;
-        }
-
-        /* ============ FORMS ============ */
-        .transaction-form {
-            display: grid;
-            gap: 12px;
-        }
-
-        .type-toggle {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-
+        /* ── ADD FORM ── */
+        .type-toggle { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
         .type-btn {
-            padding: 10px;
-            border: 2px solid #ddd;
-            background: white;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 13px;
-            transition: all 0.3s;
+            padding:11px; border:2px solid #ddd; background:white;
+            border-radius:8px; cursor:pointer; font-weight:600; font-size:13px; transition:all .3s;
         }
+        .type-btn.income.active  { border-color:#4caf50; background:#e8f5e9; color:#4caf50; }
+        .type-btn.expense.active { border-color:#ff6b6b; background:#ffebee; color:#ff6b6b; }
 
-        .type-btn.income.active {
-            border-color: #4caf50;
-            background: #e8f5e9;
-            color: #4caf50;
+        /* ── SEARCH ── */
+        .search-bar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+        .search-bar input,.search-bar select { flex:1; min-width:110px; padding:10px; border:2px solid #ddd; border-radius:8px; font-size:13px; font-family:inherit; }
+        .search-bar .btn-primary { padding:10px 14px; font-size:13px; }
+
+        /* ── CHARTS ── */
+        .charts-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:20px; }
+        .chart-box { background:#f9f9f9; padding:18px; border-radius:12px; height:280px; }
+        .chart-box h4 { color:#555; font-size:13px; margin-bottom:12px; }
+
+        /* ── MONTHLY ANALYSIS ── */
+        .monthly-header { display:flex; align-items:center; gap:15px; margin-bottom:20px; flex-wrap:wrap; }
+        .monthly-header label { font-weight:600; color:#555; }
+        .year-select {
+            padding:10px 15px; border:2px solid #ddd; border-radius:8px;
+            font-size:14px; background:white; cursor:pointer; font-family:inherit;
         }
+        .monthly-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:15px; }
 
-        .type-btn.expense.active {
-            border-color: #ff6b6b;
-            background: #ffebee;
-            color: #ff6b6b;
+        .m-card { background:white; border-radius:12px; overflow:hidden; box-shadow:0 3px 12px rgba(0,0,0,.08); }
+        .m-card-head {
+            display:flex; justify-content:space-between; align-items:center;
+            padding:13px 16px; font-weight:700; color:white; font-size:15px;
         }
+        .m-card-head.positive { background:linear-gradient(90deg,#4caf50,#66bb6a); }
+        .m-card-head.excellent { background:linear-gradient(90deg,#2196f3,#42a5f5); }
+        .m-card-head.negative  { background:linear-gradient(90deg,#ff6b6b,#ef9a9a); }
+        .m-card-head.neutral   { background:linear-gradient(90deg,#9e9e9e,#bdbdbd); }
+        .m-card-body { padding:14px 16px; }
+        .m-savings { font-size:26px; font-weight:800; color:#333; margin-bottom:10px; }
+        .m-savings.positive { color:#4caf50; }
+        .m-savings.negative { color:#ff6b6b; }
 
-        .form-group select,
-        .form-group input,
-        .form-group textarea {
-            width: 100%;
-            padding: 10px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 13px;
+        .m-compare {
+            padding:10px 12px; border-radius:8px; font-size:13px;
+            display:flex; align-items:center; gap:8px;
         }
+        .m-compare.up   { background:#e8f5e9; }
+        .m-compare.down { background:#ffebee; }
+        .m-compare.same { background:#f5f5f5; }
+        .m-compare .arrow { font-size:18px; font-weight:900; }
+        .m-compare.up   .arrow { color:#4caf50; }
+        .m-compare.down .arrow { color:#ff6b6b; }
+        .m-compare.same .arrow { color:#999; }
+        .m-compare-text { line-height:1.4; }
+        .m-compare-amount { font-weight:700; font-size:14px; }
+        .m-compare-from   { font-size:11px; color:#888; }
+        .m-empty { color:#ccc; font-size:13px; font-style:italic; }
 
-        .form-group textarea {
-            resize: vertical;
-            min-height: 60px;
+        /* ── GOAL ── */
+        .goal-box { background:#fff7ed; border:2px solid #ffcc80; border-radius:12px; padding:20px; margin-bottom:20px; }
+        .goal-box h3 { color:#e65100; margin-bottom:15px; font-size:16px; }
+        .goal-input-row { display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
+        .goal-input-row input { flex:1; min-width:150px; padding:10px; border:2px solid #ddd; border-radius:8px; font-size:14px; font-family:inherit; }
+        .goal-input-row .btn-primary { background:#ff9800; flex-shrink:0; }
+        .goal-input-row .btn-primary:hover { background:#fb8c00; }
+        .goal-progress-track { height:22px; background:#ffe0b2; border-radius:11px; overflow:hidden; margin-bottom:12px; }
+        .goal-progress-fill  { height:100%; border-radius:11px; background:linear-gradient(90deg,#ff9800,#ffc107); transition:width .5s; }
+        .goal-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; }
+        .goal-stat { background:white; padding:12px; border-radius:8px; text-align:center; }
+        .goal-stat-label { font-size:11px; color:#999; margin-bottom:4px; }
+        .goal-stat-value { font-size:16px; font-weight:700; color:#333; }
+
+        /* ── MODAL ── */
+        .modal-overlay {
+            display:none; position:fixed; inset:0; background:rgba(0,0,0,.5);
+            z-index:9999; justify-content:center; align-items:flex-start;
+            padding:20px; overflow-y:auto;
         }
-
-        /* ============ MODAL ============ */
+        .modal-overlay.show { display:flex; }
         .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-            justify-content: center;
-            align-items: center;
-            overflow-y: auto;
+            background:white; border-radius:15px; width:100%; max-width:550px;
+            box-shadow:0 20px 60px rgba(0,0,0,.3); margin:auto;
         }
-
-        .modal.show {
-            display: flex;
+        .modal-head {
+            padding:18px 20px; border-bottom:2px solid #f0f0f0;
+            display:flex; justify-content:space-between; align-items:center;
         }
+        .modal-head h2 { font-size:18px; color:#333; }
+        .modal-body { padding:20px; max-height:70vh; overflow-y:auto; }
+        .modal-footer { padding:15px 20px; border-top:2px solid #f0f0f0; display:flex; justify-content:flex-end; gap:10px; }
 
-        .modal-content {
-            background: white;
-            padding: 25px;
-            border-radius: 15px;
-            max-width: 500px;
-            width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-            margin: auto;
+        /* KPI detail list inside modal */
+        .kpi-summary { display:flex; gap:20px; flex-wrap:wrap; margin-bottom:16px; padding:14px; background:#f9f9f9; border-radius:10px; }
+        .kpi-summary-item { text-align:center; }
+        .kpi-summary-item .label { font-size:11px; color:#999; }
+        .kpi-summary-item .value { font-size:20px; font-weight:800; color:#333; }
+
+        /* ── RESPONSIVE ── */
+        @media(max-width:768px){
+            .header { flex-direction:column; align-items:flex-start; }
+            .dashboard { grid-template-columns:repeat(2,1fr); gap:10px; }
+            .stat-value { font-size:18px; }
+            .tab-buttons { grid-template-columns:repeat(3,1fr); }
+            .charts-grid { grid-template-columns:1fr; }
+            .monthly-grid { grid-template-columns:1fr; }
         }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .modal-header h2 {
-            color: #333;
-            font-size: 18px;
-        }
-
-        .close-btn {
-            background: none;
-            border: none;
-            font-size: 28px;
-            cursor: pointer;
-            color: #999;
-        }
-
-        /* ============ RESPONSIVE ============ */
-        @media (max-width: 768px) {
-            .header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            .header h1 {
-                width: 100%;
-            }
-
-            .user-info {
-                width: 100%;
-                flex-wrap: wrap;
-            }
-
-            .dashboard {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 10px;
-            }
-
-            .stat-card {
-                padding: 15px;
-            }
-
-            .stat-value {
-                font-size: 20px;
-            }
-
-            .tab-buttons {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .tab-button {
-                padding: 10px 6px;
-                font-size: 11px;
-            }
-
-            .tab-content {
-                padding: 15px;
-            }
-
-            .charts-grid {
-                grid-template-columns: 1fr;
-                gap: 15px;
-            }
-
-            .chart-container {
-                height: 250px;
-                padding: 15px;
-            }
-
-            .search-bar {
-                flex-direction: column;
-            }
-
-            .search-bar input,
-            .search-bar select {
-                width: 100%;
-                min-width: auto;
-            }
-
-            .goal-form {
-                grid-template-columns: 1fr;
-            }
-
-            .goal-form button {
-                grid-column: 1;
-            }
-
-            .transaction-item {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            .transaction-actions {
-                width: 100%;
-                justify-content: flex-start;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .dashboard {
-                grid-template-columns: 1fr;
-            }
-
-            .stat-card {
-                padding: 12px;
-            }
-
-            .stat-value {
-                font-size: 18px;
-            }
-
-            .stat-label {
-                font-size: 11px;
-            }
-
-            .tab-content {
-                padding: 12px;
-            }
-
-            .goal-stats {
-                grid-template-columns: 1fr;
-            }
+        @media(max-width:480px){
+            .dashboard { grid-template-columns:1fr; }
+            .tab-buttons { grid-template-columns:repeat(2,1fr); }
+            .tab-button { font-size:10px; padding:10px 4px; }
         }
     </style>
 </head>
 <body>
-    <!-- AUTH PAGE -->
-    <div id="authPage" class="auth-page">
-        <h2 id="authTitle">Sign In</h2>
-        <div id="errorMsg" class="error-message" style="background: #fee; color: #c33; padding: 10px; border-radius: 8px; margin-bottom: 15px; display: none;"></div>
-        <div id="successMsg" class="success-message" style="background: #efe; color: #3c3; padding: 10px; border-radius: 8px; margin-bottom: 15px; display: none;"></div>
 
-        <div class="form-group">
-            <label>Email</label>
-            <input type="email" id="email" placeholder="your@email.com">
-        </div>
+<!-- ════ AUTH ════ -->
+<div id="authPage" class="auth-page">
+    <h2 id="authTitle">Sign In</h2>
+    <div id="errorMsg" class="msg error"></div>
+    <div id="successMsg" class="msg success"></div>
+    <div class="form-group"><label>Email</label><input type="email" id="email" placeholder="you@email.com"></div>
+    <div class="form-group"><label>Password</label><input type="password" id="password" placeholder="••••••••"></div>
+    <div id="fcGroup" class="form-group hidden">
+        <label>Family Code <span style="color:#999;font-size:11px">(leave blank to create new)</span></label>
+        <input type="text" id="familyCode" placeholder="Enter existing code or leave blank">
+    </div>
+    <div class="btn-row">
+        <button id="authBtn" class="btn-primary btn-full">Sign In</button>
+        <button id="toggleBtn" class="btn-secondary">Sign Up</button>
+    </div>
+    <div class="toggle-link"><p id="toggleText">Need an account? <a onclick="toggleMode()">Sign Up</a></p></div>
+</div>
 
-        <div class="form-group">
-            <label>Password</label>
-            <input type="password" id="password" placeholder="••••••••">
-        </div>
+<!-- ════ HOME ════ -->
+<div id="homePage" class="home-page hidden">
+ <div class="container">
 
-        <div id="familyCodeGroup" class="form-group hidden">
-            <label>Family Code (leave blank to create new)</label>
-            <input type="text" id="familyCode" placeholder="Enter code or leave blank">
-        </div>
+  <!-- header -->
+  <div class="header">
+    <h1>💰 Family Expense Manager</h1>
+    <div class="user-info">
+      <div>
+        <p>Logged in: <strong id="uEmail"></strong></p>
+        <div class="family-code" id="fcDisplay">Code: ---</div>
+      </div>
+      <button class="btn-logout" onclick="logout()">Logout</button>
+    </div>
+  </div>
 
-        <div class="button-group">
-            <button class="btn-primary" id="authBtn">Sign In</button>
-            <button class="btn-secondary" id="toggleBtn">Sign Up</button>
-        </div>
+  <!-- KPI cards (clickable) -->
+  <div class="dashboard">
+    <div class="stat-card income"  onclick="openKpi('income')">
+      <div class="stat-label">Income</div>
+      <div class="stat-value" id="kIncome">₹0</div>
+    </div>
+    <div class="stat-card expense" onclick="openKpi('expense')">
+      <div class="stat-label">Expense</div>
+      <div class="stat-value" id="kExpense">₹0</div>
+    </div>
+    <div class="stat-card balance" onclick="openKpi('all')">
+      <div class="stat-label">Balance</div>
+      <div class="stat-value" id="kBalance">₹0</div>
+    </div>
+    <div class="stat-card savings" onclick="openKpi('savings')">
+      <div class="stat-label">Savings</div>
+      <div class="stat-value" id="kSavings">₹0</div>
+    </div>
+  </div>
 
-        <div style="text-align: center; margin-top: 20px; color: #666; font-size: 14px;">
-            <p id="toggleText">Need account? <a onclick="toggleAuthMode()" style="color: #667eea; cursor: pointer; text-decoration: underline;">Sign Up</a></p>
-        </div>
+  <!-- tabs -->
+  <div class="tabs">
+    <div class="tab-buttons">
+      <button class="tab-button active" onclick="switchTab(0)">📊 Dashboard</button>
+      <button class="tab-button" onclick="switchTab(1)">➕ Add</button>
+      <button class="tab-button" onclick="switchTab(2)">🔍 Search</button>
+      <button class="tab-button" onclick="switchTab(3)">📈 Charts</button>
+      <button class="tab-button" onclick="switchTab(4)">📅 Monthly</button>
+      <button class="tab-button" onclick="switchTab(5)">🎯 Goals</button>
     </div>
 
-    <!-- HOME PAGE -->
-    <div id="homePage" class="home-page hidden">
-        <div class="container">
-            <div class="header">
-                <h1>💰 Family Expense Manager</h1>
-                <div class="user-info">
-                    <div>
-                        <p>Logged in: <strong id="userEmail" style="font-size: 12px;">User</strong></p>
-                        <div class="family-code" id="familyCodeDisplay">Code: ---</div>
-                    </div>
-                    <button class="btn-logout btn-small" onclick="logout()">Logout</button>
-                </div>
-            </div>
-
-            <!-- Dashboard Stats -->
-            <div class="dashboard">
-                <div class="stat-card income">
-                    <div class="stat-label">Income</div>
-                    <div class="stat-value" id="totalIncome">₹0</div>
-                </div>
-                <div class="stat-card expense">
-                    <div class="stat-label">Expense</div>
-                    <div class="stat-value" id="totalExpense">₹0</div>
-                </div>
-                <div class="stat-card balance">
-                    <div class="stat-label">Balance</div>
-                    <div class="stat-value" id="balance">₹0</div>
-                </div>
-                <div class="stat-card savings">
-                    <div class="stat-label">Savings</div>
-                    <div class="stat-value" id="totalSavings">₹0</div>
-                </div>
-            </div>
-
-            <!-- Tabs -->
-            <div class="tabs">
-                <div class="tab-buttons">
-                    <button class="tab-button active" onclick="switchTab(0)">📊 Dashboard</button>
-                    <button class="tab-button" onclick="switchTab(1)">➕ Add</button>
-                    <button class="tab-button" onclick="switchTab(2)">🔍 Search</button>
-                    <button class="tab-button" onclick="switchTab(3)">📈 Charts</button>
-                    <button class="tab-button" onclick="switchTab(4)">🎯 Goals</button>
-                </div>
-
-                <!-- Tab 0: Dashboard -->
-                <div class="tab-content active">
-                    <h3 style="color: #333; margin-bottom: 15px; font-size: 16px;">Recent Transactions</h3>
-                    <div id="recentTransactions" class="transactions-list"></div>
-                </div>
-
-                <!-- Tab 1: Add Transaction -->
-                <div class="tab-content">
-                    <div class="transaction-form">
-                        <div class="type-toggle">
-                            <button class="type-btn income active" onclick="setType('income')">💰 Income</button>
-                            <button class="type-btn expense" onclick="setType('expense')">💸 Expense</button>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Amount (₹)</label>
-                            <input type="number" id="amount" placeholder="0" step="0.01">
-                        </div>
-
-                        <div class="form-group">
-                            <label>Category</label>
-                            <select id="category"></select>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Description (optional)</label>
-                            <textarea id="description" placeholder="Add details..."></textarea>
-                        </div>
-
-                        <button class="btn-primary" onclick="addTransaction()">Add Transaction</button>
-                    </div>
-                </div>
-
-                <!-- Tab 2: Search & Filter -->
-                <div class="tab-content">
-                    <h3 style="color: #333; margin-bottom: 15px; font-size: 16px;">Search & Filter</h3>
-                    
-                    <div class="search-bar">
-                        <input type="text" id="searchText" placeholder="Search...">
-                        <select id="filterCategory">
-                            <option value="">All Categories</option>
-                        </select>
-                        <select id="filterType">
-                            <option value="">All Types</option>
-                            <option value="income">Income</option>
-                            <option value="expense">Expense</option>
-                        </select>
-                        <button class="btn-primary btn-small" onclick="applyFilters()">Search</button>
-                    </div>
-
-                    <div id="filteredTransactions" class="transactions-list"></div>
-                </div>
-
-                <!-- Tab 3: Charts -->
-                <div class="tab-content">
-                    <h3 style="color: #333; margin-bottom: 15px; font-size: 16px;">Visual Analytics</h3>
-                    
-                    <div class="charts-grid">
-                        <div class="chart-container">
-                            <div class="chart-title">📊 Income vs Expense</div>
-                            <canvas id="incomeExpenseChart"></canvas>
-                        </div>
-                        <div class="chart-container">
-                            <div class="chart-title">🥧 Expense Categories</div>
-                            <canvas id="expensePieChart"></canvas>
-                        </div>
-                        <div class="chart-container">
-                            <div class="chart-title">💵 Income Categories</div>
-                            <canvas id="incomePieChart"></canvas>
-                        </div>
-                        <div class="chart-container">
-                            <div class="chart-title">📈 Monthly Trends</div>
-                            <canvas id="trendsChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tab 4: Savings Goals -->
-                <div class="tab-content">
-                    <div class="goal-section">
-                        <h3>🎯 Monthly Savings Goal</h3>
-                        
-                        <div class="goal-form">
-                            <input type="number" id="goalAmount" placeholder="Enter target amount" step="100">
-                            <button class="btn-primary" onclick="setSavingsGoal()">Set Goal</button>
-                        </div>
-
-                        <div class="goal-display">
-                            <div class="goal-label">Current Goal Progress</div>
-                            <div class="goal-progress">
-                                <div class="goal-progress-fill" id="goalProgressFill" style="width: 0%"></div>
-                            </div>
-                            
-                            <div class="goal-stats">
-                                <div class="goal-stat">
-                                    <div class="goal-stat-label">Target</div>
-                                    <div class="goal-stat-value" id="goalTarget">₹0</div>
-                                </div>
-                                <div class="goal-stat">
-                                    <div class="goal-stat-label">Achieved</div>
-                                    <div class="goal-stat-value" id="goalAchieved">₹0</div>
-                                </div>
-                                <div class="goal-stat">
-                                    <div class="goal-stat-label">Remaining</div>
-                                    <div class="goal-stat-value" id="goalRemaining">₹0</div>
-                                </div>
-                                <div class="goal-stat">
-                                    <div class="goal-stat-label">Progress</div>
-                                    <div class="goal-stat-value" id="goalPercent">0%</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <!-- 0: Dashboard -->
+    <div class="tab-content active">
+      <h3 style="color:#333;margin-bottom:15px;font-size:16px;">Recent Transactions</h3>
+      <div id="dashTxList" class="tx-list"></div>
     </div>
 
-    <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        // ============ FIREBASE CONFIG ============
-        const firebaseConfig = {
-            apiKey: "AIzaSyBEbRDWwP81F8vgZh6juCYIt0zJZx60U5E",
-            authDomain: "familyexpensemanager-18fa4.firebaseapp.com",
-            databaseURL: "https://familyexpensemanager-18fa4-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "familyexpensemanager-18fa4",
-            storageBucket: "familyexpensemanager-18fa4.firebasestorage.app",
-            messagingSenderId: "1071414754492",
-            appId: "1:1071414754492:web:12f3b6641df06f7d4ee4b9"
-        };
+    <!-- 1: Add -->
+    <div class="tab-content">
+      <div style="display:grid;gap:14px;">
+        <div class="type-toggle">
+          <button class="type-btn income active" onclick="setType('income')">💰 Income</button>
+          <button class="type-btn expense"       onclick="setType('expense')">💸 Expense</button>
+        </div>
+        <div class="form-group"><label>Amount (₹)</label><input type="number" id="addAmt" placeholder="0" min="0" step="0.01"></div>
+        <div class="form-group"><label>Category</label><select id="addCat"></select></div>
+        <div class="form-group"><label>Description <span style="color:#bbb;font-size:11px">(optional)</span></label>
+          <textarea id="addDesc" placeholder="e.g. Monthly grocery run, electricity bill for April…"></textarea>
+        </div>
+        <button class="btn-primary" onclick="addTransaction()">Add Transaction</button>
+      </div>
+    </div>
 
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.database();
+    <!-- 2: Search -->
+    <div class="tab-content">
+      <h3 style="color:#333;margin-bottom:14px;font-size:16px;">Search & Filter</h3>
+      <div class="search-bar">
+        <input type="text"   id="srText" placeholder="Search description / category…">
+        <select id="srCat"><option value="">All Categories</option></select>
+        <select id="srType">
+          <option value="">All Types</option>
+          <option value="income">Income</option>
+          <option value="expense">Expense</option>
+        </select>
+        <button class="btn-primary" onclick="doSearch()">Search</button>
+      </div>
+      <div id="srList" class="tx-list"></div>
+    </div>
 
-        // ============ STATE ============
-        let currentUser = null;
-        let familyCode = null;
-        let isSignUp = false;
-        let currentType = 'income';
-        let realtimeListenerRef = null;
-        let allTransactions = {};
-        let savingsGoal = 0;
-        let charts = {};
+    <!-- 3: Charts -->
+    <div class="tab-content">
+      <div class="charts-grid">
+        <div class="chart-box"><h4>📊 Income vs Expense</h4><canvas id="cBar"></canvas></div>
+        <div class="chart-box"><h4>🥧 Expense by Category</h4><canvas id="cExpPie"></canvas></div>
+        <div class="chart-box"><h4>💵 Income by Category</h4><canvas id="cIncPie"></canvas></div>
+        <div class="chart-box"><h4>📈 Monthly Savings Trend</h4><canvas id="cTrend"></canvas></div>
+      </div>
+    </div>
 
-        const expenseCategories = ['🍔 Food', '🚗 Transport', '💡 Utilities', '🎬 Entertainment', '⚕️ Medical', '🛍️ Shopping', '📚 Education', '📌 Other'];
-        const incomeCategories = ['💼 Salary', '🎁 Bonus', '🎀 Gift', '📈 Investment', '📌 Other'];
+    <!-- 4: Monthly -->
+    <div class="tab-content">
+      <div class="monthly-header">
+        <label>View Year:</label>
+        <select class="year-select" id="yearSel" onchange="loadMonthly()"></select>
+      </div>
+      <div id="monthlyGrid" class="monthly-grid"></div>
+    </div>
 
-        // ============ AUTHENTICATION ============
-        auth.onAuthStateChanged((user) => {
-            if (user) {
-                currentUser = user;
-                loadFamilyCode();
-                showPage('home');
-            } else {
-                currentUser = null;
-                familyCode = null;
-                if (realtimeListenerRef) {
-                    realtimeListenerRef.off();
-                    realtimeListenerRef = null;
-                }
-                showPage('auth');
-            }
-        });
+    <!-- 5: Goals -->
+    <div class="tab-content">
+      <div class="goal-box">
+        <h3>🎯 Monthly Savings Goal</h3>
+        <div class="goal-input-row">
+          <input type="number" id="goalAmt" placeholder="Enter monthly target (₹)" min="0">
+          <button class="btn-primary" onclick="saveGoal()">Set Goal</button>
+        </div>
+        <div class="goal-progress-track">
+          <div class="goal-progress-fill" id="gFill" style="width:0%"></div>
+        </div>
+        <div class="goal-stats">
+          <div class="goal-stat"><div class="goal-stat-label">Target</div><div class="goal-stat-value" id="gTarget">₹0</div></div>
+          <div class="goal-stat"><div class="goal-stat-label">Saved</div><div class="goal-stat-value" id="gSaved">₹0</div></div>
+          <div class="goal-stat"><div class="goal-stat-label">Remaining</div><div class="goal-stat-value" id="gRem">₹0</div></div>
+          <div class="goal-stat"><div class="goal-stat-label">Progress</div><div class="goal-stat-value" id="gPct">0%</div></div>
+        </div>
+      </div>
+    </div>
 
-        function toggleAuthMode() {
-            isSignUp = !isSignUp;
-            document.getElementById('authTitle').textContent = isSignUp ? 'Create Account' : 'Sign In';
-            document.getElementById('authBtn').textContent = isSignUp ? 'Sign Up' : 'Sign In';
-            document.getElementById('familyCodeGroup').classList.toggle('hidden', !isSignUp);
+  </div><!-- /tabs -->
+ </div><!-- /container -->
+</div><!-- /homePage -->
+
+<!-- ════ KPI MODAL ════ -->
+<div class="modal-overlay" id="kpiModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="kpiModalTitle">Transactions</h2>
+      <button class="btn-close" onclick="closeModal('kpiModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="kpi-summary" id="kpiSummary"></div>
+      <div id="kpiList" class="tx-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ EDIT MODAL ════ -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>Edit Transaction</h2>
+      <button class="btn-close" onclick="closeModal('editModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;gap:14px;">
+        <div class="type-toggle">
+          <button class="type-btn income" id="eBtnIncome"  onclick="setEditType('income')">💰 Income</button>
+          <button class="type-btn expense" id="eBtnExpense" onclick="setEditType('expense')">💸 Expense</button>
+        </div>
+        <div class="form-group"><label>Amount (₹)</label><input type="number" id="eAmt" placeholder="0" min="0" step="0.01"></div>
+        <div class="form-group"><label>Category</label><select id="eCat"></select></div>
+        <div class="form-group"><label>Description</label><textarea id="eDesc" placeholder="Description…"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('editModal')">Cancel</button>
+      <button class="btn-primary" onclick="saveEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+// ─── FIREBASE CONFIG ──────────────────────────────────────
+const firebaseConfig = {
+    apiKey: "AIzaSyBEbRDWwP81F8vgZh6juCYIt0zJZx60U5E",
+    authDomain: "familyexpensemanager-18fa4.firebaseapp.com",
+    databaseURL: "https://familyexpensemanager-18fa4-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "familyexpensemanager-18fa4",
+    storageBucket: "familyexpensemanager-18fa4.firebasestorage.app",
+    messagingSenderId: "1071414754492",
+    appId: "1:1071414754492:web:12f3b6641df06f7d4ee4b9"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.database();
+
+// ─── STATE ────────────────────────────────────────────────
+let user = null, familyCode = null, isSignUp = false;
+let addType = 'income', editType = 'income', editId = null;
+let allTx = {}, goal = 0, listener = null, charts = {};
+
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const INC_CATS = ['Salary','Bonus','Gift','Investment','Other'];
+const EXP_CATS = ['Food','Transport','Utilities','Entertainment','Medical','Shopping','Education','Other'];
+
+// ─── AUTH ──────────────────────────────────────────────────
+auth.onAuthStateChanged(u => {
+    if(u){ user=u; loadUser(); }
+    else { user=null; familyCode=null; listener?.off(); showPage('auth'); }
+});
+
+function toggleMode(){
+    isSignUp=!isSignUp;
+    document.getElementById('authTitle').textContent = isSignUp ? 'Create Account' : 'Sign In';
+    document.getElementById('authBtn').textContent   = isSignUp ? 'Sign Up'         : 'Sign In';
+    document.getElementById('fcGroup').classList.toggle('hidden', !isSignUp);
+    hide('errorMsg'); hide('successMsg');
+}
+
+async function doAuth(){
+    const em=val('email'), pw=val('password');
+    hideMsg();
+    if(!em||!pw){ showMsg('error','Please fill all fields'); return; }
+    try{
+        if(isSignUp){
+            const cred = await auth.createUserWithEmailAndPassword(em,pw);
+            const uid  = cred.user.uid;
+            const code = val('familyCode') || rndCode();
+            await db.ref(`users/${uid}`).set({ email:em, familyCode:code, createdAt:new Date().toISOString() });
+            await db.ref(`families/${code}`).set({ code, createdAt:new Date().toISOString() });
+            showMsg('success',`Account created! Family Code: ${code}`);
+        } else {
+            await auth.signInWithEmailAndPassword(em,pw);
         }
+    } catch(e){ showMsg('error',e.message); }
+}
 
-        async function authenticate() {
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value;
-            const errorDiv = document.getElementById('errorMsg');
-            const successDiv = document.getElementById('successMsg');
+async function logout(){ await auth.signOut(); }
 
-            errorDiv.style.display = 'none';
-            successDiv.style.display = 'none';
-
-            if (!email || !password) {
-                showError(errorDiv, 'Please fill all fields');
-                return;
-            }
-
-            try {
-                if (isSignUp) {
-                    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-                    const uid = userCredential.user.uid;
-                    const enteredCode = document.getElementById('familyCode').value.trim();
-                    const newFamilyCode = enteredCode || generateFamilyCode();
-
-                    await db.ref(`users/${uid}`).set({
-                        email: email,
-                        familyCode: newFamilyCode,
-                        createdAt: new Date().toISOString()
-                    });
-
-                    await db.ref(`families/${newFamilyCode}`).set({
-                        code: newFamilyCode,
-                        createdAt: new Date().toISOString()
-                    });
-
-                    showSuccess(successDiv, `Account created! Code: ${newFamilyCode}`);
-                } else {
-                    await auth.signInWithEmailAndPassword(email, password);
-                }
-            } catch (error) {
-                showError(errorDiv, error.message);
-            }
-        }
-
-        async function logout() {
-            await auth.signOut();
-        }
-
-        function generateFamilyCode() {
-            return Math.random().toString(36).substring(2, 12).toUpperCase();
-        }
-
-        function loadFamilyCode() {
-            db.ref(`users/${currentUser.uid}`).once('value', (snap) => {
-                if (snap.val()) {
-                    familyCode = snap.val().familyCode;
-                    document.getElementById('userEmail').textContent = currentUser.email;
-                    document.getElementById('familyCodeDisplay').textContent = `Code: ${familyCode}`;
-                    loadData();
-                    setupRealtimeListener();
-                    loadSavingsGoal();
-                }
-            });
-        }
-
-        // ============ PAGE MANAGEMENT ============
-        function showPage(page) {
-            document.getElementById('authPage').classList.toggle('hidden', page !== 'auth');
-            document.getElementById('homePage').classList.toggle('hidden', page !== 'home');
-        }
-
-        function switchTab(index) {
-            document.querySelectorAll('.tab-button').forEach((btn, i) => {
-                btn.classList.toggle('active', i === index);
-            });
-            document.querySelectorAll('.tab-content').forEach((content, i) => {
-                content.classList.toggle('active', i === index);
-            });
-            
-            // Render charts when charts tab is opened
-            if (index === 3) {
-                setTimeout(() => renderAllCharts(), 100);
-            }
-        }
-
-        // ============ TRANSACTIONS ============
-        function setType(type) {
-            currentType = type;
-            document.querySelectorAll('.type-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelector(`.type-btn.${type}`).classList.add('active');
-            updateCategorySelect(type);
-        }
-
-        function updateCategorySelect(type) {
-            const categories = type === 'income' ? incomeCategories : expenseCategories;
-            document.getElementById('category').innerHTML = categories.map(cat => 
-                `<option value="${cat.substring(2)}">${cat}</option>`
-            ).join('');
-        }
-
-        async function addTransaction() {
-            const amount = parseFloat(document.getElementById('amount').value);
-            const category = document.getElementById('category').value;
-            const description = document.getElementById('description').value;
-
-            if (!amount || amount <= 0) {
-                alert('Please enter valid amount');
-                return;
-            }
-
-            if (!familyCode) {
-                alert('Family code not loaded');
-                return;
-            }
-
-            const transactionRef = db.ref(`families/${familyCode}/transactions`).push();
-            const transaction = {
-                id: transactionRef.key,
-                type: currentType,
-                amount: amount,
-                category: category,
-                description: description,
-                userId: currentUser.uid,
-                userEmail: currentUser.email,
-                date: new Date().toISOString()
-            };
-
-            try {
-                await transactionRef.set(transaction);
-                document.getElementById('amount').value = '';
-                document.getElementById('description').value = '';
-                alert('Transaction added!');
-                updateGoalProgress();
-            } catch (error) {
-                alert('Error: ' + error.message);
-            }
-        }
-
-        // ============ DATA LOADING ============
-        function loadData() {
-            if (!familyCode) return;
-
-            db.ref(`families/${familyCode}/transactions`).once('value', (snap) => {
-                allTransactions = snap.val() || {};
-                updateDashboard();
-                updateRecentTransactions();
-                populateFilterCategories();
-            });
-        }
-
-        function setupRealtimeListener() {
-            if (!familyCode) return;
-
-            if (realtimeListenerRef) {
-                realtimeListenerRef.off();
-            }
-
-            realtimeListenerRef = db.ref(`families/${familyCode}/transactions`);
-            realtimeListenerRef.on('value', (snap) => {
-                allTransactions = snap.val() || {};
-                updateDashboard();
-                updateRecentTransactions();
-                populateFilterCategories();
-                updateGoalProgress();
-            });
-        }
-
-        function updateDashboard() {
-            let totalIncome = 0;
-            let totalExpense = 0;
-
-            Object.values(allTransactions).forEach(t => {
-                if (t.type === 'income') totalIncome += t.amount;
-                else totalExpense += t.amount;
-            });
-
-            const balance = totalIncome - totalExpense;
-
-            document.getElementById('totalIncome').textContent = '₹' + totalIncome.toLocaleString('en-IN', { maximumFractionDigits: 0 });
-            document.getElementById('totalExpense').textContent = '₹' + totalExpense.toLocaleString('en-IN', { maximumFractionDigits: 0 });
-            document.getElementById('balance').textContent = '₹' + balance.toLocaleString('en-IN', { maximumFractionDigits: 0 });
-            document.getElementById('totalSavings').textContent = '₹' + balance.toLocaleString('en-IN', { maximumFractionDigits: 0 });
-        }
-
-        function updateRecentTransactions() {
-            const sorted = Object.entries(allTransactions)
-                .map(([id, t]) => ({...t, transactionId: id}))
-                .sort((a, b) => new Date(b.date) - new Date(a.date))
-                .slice(0, 10);
-
-            const container = document.getElementById('recentTransactions');
-
-            if (sorted.length === 0) {
-                container.innerHTML = '<div class="empty-state">No transactions yet</div>';
-                return;
-            }
-
-            container.innerHTML = sorted.map(t => {
-                const date = new Date(t.date).toLocaleDateString('en-IN');
-                const icon = t.type === 'income' ? '📈' : '📉';
-                const sign = t.type === 'income' ? '+' : '-';
-                return `
-                    <div class="transaction-item ${t.type}">
-                        <div class="transaction-info">
-                            <h4>${icon} ${t.category}</h4>
-                            <p>${date} · ${t.userEmail.split('@')[0]}</p>
-                        </div>
-                        <div class="transaction-amount ${t.type}">
-                            ${sign}₹${t.amount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function populateFilterCategories() {
-            const categories = new Set();
-            Object.values(allTransactions).forEach(t => {
-                categories.add(t.category);
-            });
-            
-            document.getElementById('filterCategory').innerHTML = '<option value="">All Categories</option>' +
-                Array.from(categories).map(cat => `<option value="${cat}">${cat}</option>`).join('');
-        }
-
-        function applyFilters() {
-            const searchText = document.getElementById('searchText').value.toLowerCase();
-            const filterCategory = document.getElementById('filterCategory').value;
-            const filterType = document.getElementById('filterType').value;
-
-            const filtered = Object.entries(allTransactions)
-                .map(([id, t]) => ({...t, transactionId: id}))
-                .filter(t => {
-                    const matchesSearch = !searchText || t.description.toLowerCase().includes(searchText) || t.category.toLowerCase().includes(searchText);
-                    const matchesCategory = !filterCategory || t.category === filterCategory;
-                    const matchesType = !filterType || t.type === filterType;
-                    return matchesSearch && matchesCategory && matchesType;
-                })
-                .sort((a, b) => new Date(b.date) - new Date(a.date));
-
-            const container = document.getElementById('filteredTransactions');
-            if (filtered.length === 0) {
-                container.innerHTML = '<div class="empty-state">No transactions found</div>';
-                return;
-            }
-
-            container.innerHTML = filtered.map(t => {
-                const date = new Date(t.date).toLocaleDateString('en-IN');
-                const icon = t.type === 'income' ? '📈' : '📉';
-                const sign = t.type === 'income' ? '+' : '-';
-                return `
-                    <div class="transaction-item ${t.type}">
-                        <div class="transaction-info">
-                            <h4>${icon} ${t.category}</h4>
-                            <p>${date} · ${t.userEmail.split('@')[0]}</p>
-                        </div>
-                        <div class="transaction-amount ${t.type}">
-                            ${sign}₹${t.amount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        // ============ CHARTS ============
-        function renderAllCharts() {
-            renderIncomeExpenseChart();
-            renderExpensePieChart();
-            renderIncomePieChart();
-            renderTrendsChart();
-        }
-
-        function renderIncomeExpenseChart() {
-            let totalIncome = 0;
-            let totalExpense = 0;
-
-            Object.values(allTransactions).forEach(t => {
-                if (t.type === 'income') totalIncome += t.amount;
-                else totalExpense += t.amount;
-            });
-
-            const ctx = document.getElementById('incomeExpenseChart').getContext('2d');
-            if (charts.incomeExpense) charts.incomeExpense.destroy();
-            charts.incomeExpense = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: ['Income', 'Expense'],
-                    datasets: [{
-                        label: 'Amount',
-                        data: [totalIncome, totalExpense],
-                        backgroundColor: ['#4caf50', '#ff6b6b']
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: { y: { beginAtZero: true } }
-                }
-            });
-        }
-
-        function renderExpensePieChart() {
-            const expenses = {};
-            Object.values(allTransactions).forEach(t => {
-                if (t.type === 'expense') {
-                    expenses[t.category] = (expenses[t.category] || 0) + t.amount;
-                }
-            });
-
-            const ctx = document.getElementById('expensePieChart').getContext('2d');
-            if (charts.expensePie) charts.expensePie.destroy();
-            charts.expensePie = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: Object.keys(expenses),
-                    datasets: [{
-                        data: Object.values(expenses),
-                        backgroundColor: ['#ff6b6b', '#ff9800', '#ffc107', '#4caf50', '#2196f3', '#9c27b0', '#00bcd4', '#607d8b']
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom' } }
-                }
-            });
-        }
-
-        function renderIncomePieChart() {
-            const incomes = {};
-            Object.values(allTransactions).forEach(t => {
-                if (t.type === 'income') {
-                    incomes[t.category] = (incomes[t.category] || 0) + t.amount;
-                }
-            });
-
-            const ctx = document.getElementById('incomePieChart').getContext('2d');
-            if (charts.incomePie) charts.incomePie.destroy();
-            charts.incomePie = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: Object.keys(incomes),
-                    datasets: [{
-                        data: Object.values(incomes),
-                        backgroundColor: ['#4caf50', '#8bc34a', '#cddc39', '#ffeb3b']
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom' } }
-                }
-            });
-        }
-
-        function renderTrendsChart() {
-            const monthlyData = {};
-            Object.values(allTransactions).forEach(t => {
-                const date = new Date(t.date);
-                const month = date.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
-                if (!monthlyData[month]) monthlyData[month] = { income: 0, expense: 0 };
-                if (t.type === 'income') monthlyData[month].income += t.amount;
-                else monthlyData[month].expense += t.amount;
-            });
-
-            const months = Object.keys(monthlyData).sort();
-            const incomeData = months.map(m => monthlyData[m].income);
-            const expenseData = months.map(m => monthlyData[m].expense);
-
-            const ctx = document.getElementById('trendsChart').getContext('2d');
-            if (charts.trends) charts.trends.destroy();
-            charts.trends = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: months,
-                    datasets: [
-                        {
-                            label: 'Income',
-                            data: incomeData,
-                            borderColor: '#4caf50',
-                            backgroundColor: 'rgba(76, 175, 80, 0.1)',
-                            tension: 0.4
-                        },
-                        {
-                            label: 'Expense',
-                            data: expenseData,
-                            borderColor: '#ff6b6b',
-                            backgroundColor: 'rgba(255, 107, 107, 0.1)',
-                            tension: 0.4
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom' } },
-                    scales: { y: { beginAtZero: true } }
-                }
-            });
-        }
-
-        // ============ SAVINGS GOALS ============
-        function setSavingsGoal() {
-            const amount = parseFloat(document.getElementById('goalAmount').value);
-            if (!amount || amount <= 0) {
-                alert('Enter valid amount');
-                return;
-            }
-
-            db.ref(`families/${familyCode}/savingsGoal`).set({
-                amount: amount,
-                createdAt: new Date().toISOString()
-            }).then(() => {
-                savingsGoal = amount;
-                updateGoalProgress();
-                alert('Goal set!');
-            }).catch(err => alert('Error: ' + err.message));
-        }
-
-        function loadSavingsGoal() {
-            db.ref(`families/${familyCode}/savingsGoal`).once('value', (snap) => {
-                if (snap.val()) {
-                    savingsGoal = snap.val().amount;
-                    updateGoalProgress();
-                }
-            });
-        }
-
-        function updateGoalProgress() {
-            let totalIncome = 0;
-            let totalExpense = 0;
-
-            Object.values(allTransactions).forEach(t => {
-                if (t.type === 'income') totalIncome += t.amount;
-                else totalExpense += t.amount;
-            });
-
-            const currentSavings = totalIncome - totalExpense;
-            const percentage = savingsGoal > 0 ? (currentSavings / savingsGoal) * 100 : 0;
-            const remaining = Math.max(0, savingsGoal - currentSavings);
-
-            document.getElementById('goalTarget').textContent = '₹' + savingsGoal.toLocaleString('en-IN', { maximumFractionDigits: 0 });
-            document.getElementById('goalAchieved').textContent = '₹' + currentSavings.toLocaleString('en-IN', { maximumFractionDigits: 0 });
-            document.getElementById('goalRemaining').textContent = '₹' + remaining.toLocaleString('en-IN', { maximumFractionDigits: 0 });
-            document.getElementById('goalPercent').textContent = Math.min(100, Math.round(percentage)) + '%';
-            document.getElementById('goalProgressFill').style.width = Math.min(100, percentage) + '%';
-            document.getElementById('goalAmount').value = savingsGoal;
-        }
-
-        // ============ UI HELPERS ============
-        function showError(element, message) {
-            element.textContent = message;
-            element.style.display = 'block';
-        }
-
-        function showSuccess(element, message) {
-            element.textContent = message;
-            element.style.display = 'block';
-        }
-
-        // ============ EVENT LISTENERS ============
-        document.getElementById('authBtn').addEventListener('click', authenticate);
-        document.getElementById('toggleBtn').addEventListener('click', toggleAuthMode);
-        document.getElementById('email').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') authenticate();
-        });
-        document.getElementById('password').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') authenticate();
-        });
-
-        // Expose functions
-        window.logout = logout;
-        window.toggleAuthMode = toggleAuthMode;
-        window.switchTab = switchTab;
-        window.setType = setType;
-        window.addTransaction = addTransaction;
-        window.applyFilters = applyFilters;
-        window.setSavingsGoal = setSavingsGoal;
-
-        // Initialize categories
-        setType('income');
+function loadUser(){
+    db.ref(`users/${user.uid}`).once('value', s => {
+        if(!s.val()) return;
+        familyCode = s.val().familyCode;
+        document.getElementById('uEmail').textContent    = user.email;
+        document.getElementById('fcDisplay').textContent = `Code: ${familyCode}`;
+        populateYearSelect();
+        setupCats('addCat','income');
+        initListener();
+        loadGoal();
+        showPage('home');
     });
-    </script>
+}
+
+// ─── REALTIME LISTENER ────────────────────────────────────
+function initListener(){
+    if(listener) listener.off();
+    listener = db.ref(`families/${familyCode}/transactions`);
+    listener.on('value', s => {
+        allTx = s.val() || {};
+        refreshAll();
+    });
+}
+
+function refreshAll(){
+    updateKPIs();
+    renderDashList();
+    populateSrCats();
+    updateGoalUI();
+}
+
+// ─── KPI ──────────────────────────────────────────────────
+function updateKPIs(){
+    let inc=0, exp=0;
+    Object.values(allTx).forEach(t => t.type==='income' ? inc+=t.amount : exp+=t.amount);
+    const bal = inc-exp;
+    document.getElementById('kIncome').textContent  = fmt(inc);
+    document.getElementById('kExpense').textContent = fmt(exp);
+    document.getElementById('kBalance').textContent = fmt(bal);
+    document.getElementById('kSavings').textContent = fmt(bal);
+}
+
+// ─── DASHBOARD LIST ──────────────────────────────────────
+function renderDashList(){
+    const list = sorted(allTx).slice(0,15);
+    document.getElementById('dashTxList').innerHTML = list.length
+        ? list.map(t => txCard(t, true)).join('')
+        : '<div class="empty-state">No transactions yet. Add one in ➕ Add tab!</div>';
+}
+
+// ─── TX CARD HTML ─────────────────────────────────────────
+function txCard(t, editable=false){
+    const date = new Date(t.date).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+    const sign = t.type==='income' ? '+' : '-';
+    const icon = t.type==='income' ? '📈' : '📉';
+    const descHtml = t.description
+        ? `<div class="tx-desc">📝 ${escHtml(t.description)}</div>`
+        : `<div class="tx-desc" style="color:#ccc">No description added</div>`;
+    const actionHtml = editable ? `
+        <div class="tx-actions">
+            <button class="btn-edit"   onclick="openEdit('${t.transactionId}')">✏️ Edit</button>
+            <button class="btn-danger" onclick="deleteTx('${t.transactionId}')">🗑 Delete</button>
+        </div>` : '';
+    return `
+    <div class="tx-item ${t.type}">
+      <div class="tx-main">
+        <div class="tx-left">
+          <div class="tx-title">${icon} ${escHtml(t.category)}</div>
+          <div class="tx-meta">${date} &nbsp;·&nbsp; ${t.userEmail.split('@')[0]}</div>
+          ${descHtml}
+        </div>
+        <div class="tx-right">
+          <div class="tx-amount ${t.type}">${sign}${fmt(t.amount)}</div>
+          ${actionHtml}
+        </div>
+      </div>
+    </div>`;
+}
+
+// ─── ADD TRANSACTION ─────────────────────────────────────
+function setType(type){
+    addType=type;
+    document.querySelectorAll('.type-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelector(`.type-btn.${type}`).classList.add('active');
+    setupCats('addCat', type);
+}
+
+async function addTransaction(){
+    const amt  = parseFloat(val('addAmt'));
+    const cat  = val('addCat');
+    const desc = val('addDesc');
+    if(!amt||amt<=0){ alert('Enter a valid amount'); return; }
+    if(!familyCode){ alert('Family code not ready'); return; }
+    const ref = db.ref(`families/${familyCode}/transactions`).push();
+    await ref.set({
+        id:ref.key, type:addType, amount:amt, category:cat,
+        description:desc, userId:user.uid, userEmail:user.email,
+        date:new Date().toISOString()
+    });
+    document.getElementById('addAmt').value  = '';
+    document.getElementById('addDesc').value = '';
+    alert('✅ Transaction added!');
+}
+
+// ─── EDIT / DELETE ────────────────────────────────────────
+function openEdit(id){
+    const t = allTx[id];
+    if(!t){ alert('Transaction not found'); return; }
+    editId   = id;
+    editType = t.type;
+    document.getElementById('eAmt').value  = t.amount;
+    document.getElementById('eDesc').value = t.description || '';
+    setEditType(t.type);
+    document.getElementById('eCat').value = t.category;
+    openModal('editModal');
+}
+
+function setEditType(type){
+    editType=type;
+    document.getElementById('eBtnIncome').classList.toggle('active', type==='income');
+    document.getElementById('eBtnExpense').classList.toggle('active', type==='expense');
+    setupCats('eCat', type);
+}
+
+async function saveEdit(){
+    if(!editId) return;
+    const amt  = parseFloat(document.getElementById('eAmt').value);
+    const cat  = document.getElementById('eCat').value;
+    const desc = document.getElementById('eDesc').value;
+    if(!amt||amt<=0){ alert('Enter valid amount'); return; }
+    await db.ref(`families/${familyCode}/transactions/${editId}`).update({
+        amount:amt, category:cat, description:desc, type:editType
+    });
+    closeModal('editModal');
+    alert('✅ Transaction updated!');
+}
+
+async function deleteTx(id){
+    if(!confirm('Delete this transaction?')) return;
+    await db.ref(`families/${familyCode}/transactions/${id}`).remove();
+    alert('🗑 Transaction deleted!');
+}
+
+// ─── KPI MODAL ────────────────────────────────────────────
+function openKpi(filter){
+    const titles = { income:'💰 All Income', expense:'💸 All Expenses', all:'📊 All Transactions', savings:'💾 Savings Detail' };
+    document.getElementById('kpiModalTitle').textContent = titles[filter]||'Transactions';
+
+    let items = sorted(allTx);
+    if(filter==='income')  items = items.filter(t=>t.type==='income');
+    if(filter==='expense') items = items.filter(t=>t.type==='expense');
+
+    // Summary bar
+    let totalInc=0, totalExp=0;
+    items.forEach(t => t.type==='income' ? totalInc+=t.amount : totalExp+=t.amount);
+    const savingsVal = totalInc - totalExp;
+    let summaryHtml = '';
+    if(filter==='income'){
+        summaryHtml = `<div class="kpi-summary-item"><div class="label">Total Income</div><div class="value" style="color:#4caf50">${fmt(totalInc)}</div></div>
+                       <div class="kpi-summary-item"><div class="label">Transactions</div><div class="value">${items.length}</div></div>`;
+    } else if(filter==='expense'){
+        summaryHtml = `<div class="kpi-summary-item"><div class="label">Total Expense</div><div class="value" style="color:#ff6b6b">${fmt(totalExp)}</div></div>
+                       <div class="kpi-summary-item"><div class="label">Transactions</div><div class="value">${items.length}</div></div>`;
+    } else {
+        summaryHtml = `<div class="kpi-summary-item"><div class="label">Income</div><div class="value" style="color:#4caf50">${fmt(totalInc)}</div></div>
+                       <div class="kpi-summary-item"><div class="label">Expense</div><div class="value" style="color:#ff6b6b">${fmt(totalExp)}</div></div>
+                       <div class="kpi-summary-item"><div class="label">Savings</div><div class="value" style="color:#ff9800">${fmt(savingsVal)}</div></div>
+                       <div class="kpi-summary-item"><div class="label">Transactions</div><div class="value">${items.length}</div></div>`;
+    }
+    document.getElementById('kpiSummary').innerHTML = summaryHtml;
+    document.getElementById('kpiList').innerHTML = items.length
+        ? items.map(t => txCard(t, false)).join('')
+        : '<div class="empty-state">No transactions found.</div>';
+    openModal('kpiModal');
+}
+
+// ─── SEARCH ───────────────────────────────────────────────
+function doSearch(){
+    const txt  = val('srText').toLowerCase();
+    const cat  = val('srCat');
+    const type = val('srType');
+    const res  = sorted(allTx).filter(t =>
+        (!txt  || t.category.toLowerCase().includes(txt) || (t.description||'').toLowerCase().includes(txt)) &&
+        (!cat  || t.category===cat) &&
+        (!type || t.type===type)
+    );
+    document.getElementById('srList').innerHTML = res.length
+        ? res.map(t => txCard(t, true)).join('')
+        : '<div class="empty-state">No results found.</div>';
+}
+
+function populateSrCats(){
+    const cats = [...new Set(Object.values(allTx).map(t=>t.category))];
+    document.getElementById('srCat').innerHTML =
+        '<option value="">All Categories</option>' +
+        cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+}
+
+// ─── CHARTS ───────────────────────────────────────────────
+function renderCharts(){
+    let inc=0, exp=0;
+    const expCats={}, incCats={}, monthMap={};
+    Object.values(allTx).forEach(t=>{
+        if(t.type==='income'){ inc+=t.amount; incCats[t.category]=(incCats[t.category]||0)+t.amount; }
+        else { exp+=t.amount; expCats[t.category]=(expCats[t.category]||0)+t.amount; }
+        const ym = t.date.substring(0,7);
+        if(!monthMap[ym]) monthMap[ym]={inc:0,exp:0};
+        t.type==='income' ? monthMap[ym].inc+=t.amount : monthMap[ym].exp+=t.amount;
+    });
+    const months = Object.keys(monthMap).sort();
+    const PIE_COLORS = ['#ff6b6b','#ff9800','#ffc107','#4caf50','#2196f3','#9c27b0','#00bcd4','#607d8b'];
+
+    mkChart('cBar','bar',{ labels:['Income','Expense'], datasets:[{ data:[inc,exp], backgroundColor:['#4caf50','#ff6b6b'] }] },{ plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} });
+    mkChart('cExpPie','doughnut',{ labels:Object.keys(expCats), datasets:[{ data:Object.values(expCats), backgroundColor:PIE_COLORS }] },{});
+    mkChart('cIncPie','doughnut',{ labels:Object.keys(incCats), datasets:[{ data:Object.values(incCats), backgroundColor:['#4caf50','#8bc34a','#cddc39','#ffeb3b','#aed581'] }] },{});
+    mkChart('cTrend','line',{
+        labels:months.map(m=>{ const [y,mo]=m.split('-'); return MONTHS[+mo-1].substring(0,3)+' '+y.substring(2); }),
+        datasets:[
+            { label:'Income',  data:months.map(m=>monthMap[m].inc), borderColor:'#4caf50', backgroundColor:'rgba(76,175,80,.1)', tension:.4, fill:true },
+            { label:'Savings', data:months.map(m=>monthMap[m].inc-monthMap[m].exp), borderColor:'#ff9800', backgroundColor:'rgba(255,152,0,.1)', tension:.4, fill:true }
+        ]
+    }, { scales:{y:{beginAtZero:true}} });
+}
+
+function mkChart(id, type, data, opts){
+    if(charts[id]) charts[id].destroy();
+    charts[id]=new Chart(document.getElementById(id).getContext('2d'),{
+        type, data,
+        options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}}, ...opts }
+    });
+}
+
+// ─── MONTHLY ANALYSIS ─────────────────────────────────────
+function populateYearSelect(){
+    const yr = new Date().getFullYear();
+    const sel = document.getElementById('yearSel');
+    sel.innerHTML = '';
+    for(let y=yr-2; y<=yr+2; y++){
+        const o=document.createElement('option');
+        o.value=y; o.textContent=y;
+        if(y===yr) o.selected=true;
+        sel.appendChild(o);
+    }
+}
+
+function loadMonthly(){
+    const yr = parseInt(document.getElementById('yearSel').value);
+    // build monthly savings data
+    const mData = Array.from({length:12}, ()=>({ inc:0, exp:0 }));
+    Object.values(allTx).forEach(t=>{
+        const d=new Date(t.date);
+        if(d.getFullYear()===yr){
+            const m=d.getMonth();
+            t.type==='income' ? mData[m].inc+=t.amount : mData[m].exp+=t.amount;
+        }
+    });
+
+    const cards = MONTHS.map((name,i)=>{
+        const savings = mData[i].inc - mData[i].exp;
+        const hasData = mData[i].inc>0 || mData[i].exp>0;
+
+        // Comparison with previous month
+        let compareHtml = '';
+        if(i===0){
+            compareHtml = `<div class="m-compare same"><span class="arrow">→</span><div class="m-compare-text"><div class="m-compare-amount">—</div><div class="m-compare-from">First month of year</div></div></div>`;
+        } else {
+            const prevSavings = mData[i-1].inc - mData[i-1].exp;
+            const diff = savings - prevSavings;
+            if(diff===0){
+                compareHtml = `<div class="m-compare same"><span class="arrow">→</span><div class="m-compare-text"><div class="m-compare-amount">Same as ${MONTHS[i-1]}</div><div class="m-compare-from">No change in savings</div></div></div>`;
+            } else if(diff>0){
+                compareHtml = `<div class="m-compare up"><span class="arrow">↑</span><div class="m-compare-text"><div class="m-compare-amount">+${fmt(diff)} more saved</div><div class="m-compare-from">vs ${MONTHS[i-1]}</div></div></div>`;
+            } else {
+                compareHtml = `<div class="m-compare down"><span class="arrow">↓</span><div class="m-compare-text"><div class="m-compare-amount">${fmt(Math.abs(diff))} less saved</div><div class="m-compare-from">vs ${MONTHS[i-1]}</div></div></div>`;
+            }
+        }
+
+        let headClass='neutral', badge='—';
+        if(hasData){
+            if(savings>=50000){ headClass='excellent'; badge='🌟 Excellent'; }
+            else if(savings>0){ headClass='positive';  badge='✅ Saved'; }
+            else if(savings<0){ headClass='negative';  badge='⚠️ Deficit'; }
+            else { headClass='neutral'; badge='Break Even'; }
+        }
+
+        const savingsClass = savings>0 ? 'positive' : savings<0 ? 'negative' : '';
+
+        return `
+        <div class="m-card">
+          <div class="m-card-head ${headClass}">
+            <span>${name}</span><span style="font-size:12px;opacity:.9">${badge}</span>
+          </div>
+          <div class="m-card-body">
+            ${hasData
+              ? `<div class="m-savings ${savingsClass}">${fmt(savings)}</div>${compareHtml}`
+              : `<div class="m-savings" style="color:#ccc">₹0</div><div class="m-empty">No transactions recorded</div>`
+            }
+          </div>
+        </div>`;
+    });
+
+    document.getElementById('monthlyGrid').innerHTML = cards.join('');
+}
+
+// ─── GOALS ────────────────────────────────────────────────
+function loadGoal(){
+    db.ref(`families/${familyCode}/savingsGoal`).once('value',s=>{
+        if(s.val()){ goal=s.val().amount; updateGoalUI(); }
+    });
+}
+async function saveGoal(){
+    const amt=parseFloat(document.getElementById('goalAmt').value);
+    if(!amt||amt<=0){ alert('Enter valid target'); return; }
+    goal=amt;
+    await db.ref(`families/${familyCode}/savingsGoal`).set({ amount:amt });
+    updateGoalUI();
+    alert('🎯 Goal saved!');
+}
+function updateGoalUI(){
+    let inc=0,exp=0;
+    Object.values(allTx).forEach(t=>t.type==='income'?inc+=t.amount:exp+=t.amount);
+    const sav=inc-exp, pct=goal>0?Math.min(100,(sav/goal)*100):0, rem=Math.max(0,goal-sav);
+    document.getElementById('gTarget').textContent = fmt(goal);
+    document.getElementById('gSaved').textContent  = fmt(sav);
+    document.getElementById('gRem').textContent    = fmt(rem);
+    document.getElementById('gPct').textContent    = Math.round(pct)+'%';
+    document.getElementById('gFill').style.width   = pct+'%';
+    if(goal>0) document.getElementById('goalAmt').value = goal;
+}
+
+// ─── UI HELPERS ───────────────────────────────────────────
+function switchTab(i){
+    document.querySelectorAll('.tab-button').forEach((b,j)=>b.classList.toggle('active',i===j));
+    document.querySelectorAll('.tab-content').forEach((c,j)=>c.classList.toggle('active',i===j));
+    if(i===3) setTimeout(renderCharts,100);
+    if(i===4) loadMonthly();
+}
+
+function setupCats(selectId, type){
+    const cats = type==='income' ? INC_CATS : EXP_CATS;
+    document.getElementById(selectId).innerHTML = cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+}
+
+function openModal(id){ document.getElementById(id).classList.add('show'); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+
+function sorted(txObj){
+    return Object.entries(txObj)
+        .map(([id,t])=>({...t,transactionId:id}))
+        .sort((a,b)=>new Date(b.date)-new Date(a.date));
+}
+
+function fmt(n){ return '₹'+Math.round(n).toLocaleString('en-IN'); }
+function val(id){ return (document.getElementById(id).value||'').trim(); }
+function showPage(p){
+    document.getElementById('authPage').classList.toggle('hidden',p!=='auth');
+    document.getElementById('homePage').classList.toggle('hidden',p!=='home');
+}
+function hide(id){ document.getElementById(id).style.display='none'; }
+function hideMsg(){ hide('errorMsg'); hide('successMsg'); }
+function showMsg(type,msg){
+    const el=document.getElementById(type==='error'?'errorMsg':'successMsg');
+    el.textContent=msg; el.style.display='block';
+}
+function rndCode(){ return Math.random().toString(36).substring(2,10).toUpperCase(); }
+function escHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// Close modals clicking outside
+document.querySelectorAll('.modal-overlay').forEach(ov=>{
+    ov.addEventListener('click',e=>{ if(e.target===ov) ov.classList.remove('show'); });
+});
+
+// ─── WIRE UP AUTH BUTTONS ─────────────────────────────────
+document.getElementById('authBtn').addEventListener('click', doAuth);
+document.getElementById('toggleBtn').addEventListener('click', toggleMode);
+document.getElementById('email').addEventListener('keypress',e=>{ if(e.key==='Enter') doAuth(); });
+document.getElementById('password').addEventListener('keypress',e=>{ if(e.key==='Enter') doAuth(); });
+
+// ─── EXPOSE TO INLINE HTML ────────────────────────────────
+Object.assign(window,{
+    toggleMode, logout, switchTab, setType, setEditType,
+    addTransaction, openEdit, saveEdit, deleteTx, openKpi,
+    doSearch, saveGoal, loadMonthly, closeModal
+});
+
+});// DOMContentLoaded
+</script>
 </body>
 </html>
