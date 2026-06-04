@@ -392,10 +392,29 @@
         </div>
         <div class="form-group"><label>Amount (₹)</label><input type="number" id="addAmt" placeholder="0" min="0" step="0.01"></div>
         <div class="form-group"><label>Category</label><select id="addCat"></select></div>
+        <div class="form-group"><label>Date <span style="color:#bbb;font-size:11px">(optional, defaults to today)</span></label><input type="date" id="addDate"></div>
         <div class="form-group"><label>Description <span style="color:#bbb;font-size:11px">(optional)</span></label>
           <textarea id="addDesc" placeholder="e.g. Monthly grocery run, electricity bill for April…"></textarea>
         </div>
         <button class="btn-primary" onclick="addTransaction()">Add Transaction</button>
+
+        <!-- Recurring Investment Section -->
+        <hr style="margin:20px 0;border:none;border-top:2px solid #e0e0e0;">
+        <h3 style="margin:0;color:#333;font-size:14px;">📅 Recurring Investment</h3>
+        <p style="color:#999;font-size:12px;margin:5px 0 12px 0;">Set up automatic investment reminders</p>
+        <div style="display:grid; gap:10px;">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div class="form-group"><label>Amount (₹)</label><input type="number" id="recAmt" placeholder="5000" min="0" step="0.01"></div>
+            <div class="form-group"><label>Category</label><select id="recCat"><option value="Mutual Funds">Mutual Funds</option><option value="Stocks">Stocks</option><option value="FDs">FDs</option><option value="PPF">PPF</option><option value="Bonds">Bonds</option><option value="Crypto">Crypto</option><option value="Real Estate">Real Estate</option><option value="Other">Other</option></select></div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div class="form-group"><label>Frequency</label><select id="recFreq"><option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="yearly">Yearly</option></select></div>
+            <div class="form-group"><label>Start Date</label><input type="date" id="recStart"></div>
+          </div>
+          <div class="form-group"><label>Notes</label><input type="text" id="recDesc" placeholder="e.g. Monthly SIP for retirement"></div>
+          <button class="btn-primary" onclick="addRecurringInvestment()" style="background:#9c27b0;">➕ Add Recurring</button>
+        </div>
+        <div id="recurringInvContainer" style="margin-top:15px;"></div>
       </div>
     </div>
 
@@ -576,6 +595,7 @@
         </div>
         <div class="form-group"><label>Amount (₹)</label><input type="number" id="eAmt" placeholder="0" min="0" step="0.01"></div>
         <div class="form-group"><label>Category</label><select id="eCat"></select></div>
+        <div class="form-group"><label>Date</label><input type="date" id="eDate"></div>
         <div class="form-group"><label>Description</label><textarea id="eDesc" placeholder="Description…"></textarea></div>
       </div>
     </div>
@@ -610,7 +630,7 @@ let allTx = {}, goal = 0, listener = null, charts = {};
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const INC_CATS = ['Salary','Bonus','Gift','Investment Return','Other'];
-const EXP_CATS = ['Grocery','House Rent','Light Bills','Gas Bills','Food','Transport','Utilities','Entertainment','Medical','Shopping','Education','Other'];
+const EXP_CATS = ['Grocery','House Rent','Light Bills','Gas Bills','Mobile Bill','Food','Transport','Utilities','Entertainment','Medical','Shopping','Education','Other'];
 const INV_CATS = ['Stocks','Bonds','Mutual Funds','Crypto','Real Estate','FDs','PPF','Other'];
 
 // ─── AUTH ──────────────────────────────────────────────────
@@ -659,6 +679,7 @@ function loadUser(){
         loadGoal();
         loadLentRecords();
         loadLoanRecords();
+        loadRecurringInvestments();
         showPage('home');
     });
 }
@@ -689,7 +710,7 @@ function updateKPIs(){
         else if(t.type==='expense') exp+=t.amount;
         else if(t.type==='investment') inv+=t.amount;
     });
-    const bal = inc - exp;
+    const bal = inc - exp - inv;
     document.getElementById('kIncome').textContent  = fmt(inc);
     document.getElementById('kExpense').textContent = fmt(exp);
     document.getElementById('kInvestment').textContent = fmt(inv);
@@ -747,15 +768,25 @@ async function addTransaction(){
     const amt  = parseFloat(val('addAmt'));
     const cat  = val('addCat');
     const desc = val('addDesc');
+    const dateStr = val('addDate');
     if(!amt||amt<=0){ alert('Enter a valid amount'); return; }
     if(!familyCode){ alert('Family code not ready'); return; }
+    
+    let txDate;
+    if(dateStr){
+        txDate = new Date(dateStr).toISOString();
+    } else {
+        txDate = new Date().toISOString();
+    }
+    
     const ref = db.ref(`families/${familyCode}/transactions`).push();
     await ref.set({
         id:ref.key, type:addType, amount:amt, category:cat,
         description:desc, userId:user.uid, userEmail:user.email,
-        date:new Date().toISOString()
+        date:txDate
     });
     document.getElementById('addAmt').value  = '';
+    document.getElementById('addDate').value = '';
     document.getElementById('addDesc').value = '';
     alert('✅ Transaction added!');
 }
@@ -768,6 +799,7 @@ function openEdit(id){
     editType = t.type;
     document.getElementById('eAmt').value  = t.amount;
     document.getElementById('eDesc').value = t.description || '';
+    document.getElementById('eDate').value = t.date.substring(0,10);
     setEditType(t.type);
     document.getElementById('eCat').value = t.category;
     openModal('editModal');
@@ -786,9 +818,16 @@ async function saveEdit(){
     const amt  = parseFloat(document.getElementById('eAmt').value);
     const cat  = document.getElementById('eCat').value;
     const desc = document.getElementById('eDesc').value;
+    const dateStr = document.getElementById('eDate').value;
     if(!amt||amt<=0){ alert('Enter valid amount'); return; }
+    
+    let txDate = allTx[editId].date;
+    if(dateStr){
+        txDate = new Date(dateStr).toISOString();
+    }
+    
     await db.ref(`families/${familyCode}/transactions/${editId}`).update({
-        amount:amt, category:cat, description:desc, type:editType
+        amount:amt, category:cat, description:desc, type:editType, date:txDate
     });
     closeModal('editModal');
     alert('✅ Transaction updated!');
@@ -867,6 +906,7 @@ function populateSrCats(){
 function renderCharts(){
     let inc=0, exp=0, inv=0;
     const expCats={}, incCats={}, invCats={}, monthMap={};
+    
     Object.values(allTx).forEach(t=>{
         if(t.type==='income'){ inc+=t.amount; incCats[t.category]=(incCats[t.category]||0)+t.amount; }
         else if(t.type==='expense') { exp+=t.amount; expCats[t.category]=(expCats[t.category]||0)+t.amount; }
@@ -877,27 +917,77 @@ function renderCharts(){
         else if(t.type==='expense') monthMap[ym].exp+=t.amount;
         else if(t.type==='investment') monthMap[ym].inv+=t.amount;
     });
+    
     const months = Object.keys(monthMap).sort();
     const PIE_COLORS = ['#ff6b6b','#ff9800','#ffc107','#4caf50','#2196f3','#9c27b0','#00bcd4','#607d8b'];
 
-    mkChart('cBar','bar',{ labels:['Income','Expense','Investment'], datasets:[{ data:[inc,exp,inv], backgroundColor:['#4caf50','#ff6b6b','#9c27b0'] }] },{ plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} });
-    mkChart('cExpPie','doughnut',{ labels:Object.keys(expCats), datasets:[{ data:Object.values(expCats), backgroundColor:PIE_COLORS }] },{});
-    mkChart('cIncPie','doughnut',{ labels:Object.keys(incCats), datasets:[{ data:Object.values(incCats), backgroundColor:['#4caf50','#8bc34a','#cddc39','#ffeb3b','#aed581'] }] },{});
+    // Bar chart
+    mkChart('cBar','bar',{ 
+        labels:['Income','Expense','Investment'], 
+        datasets:[{ 
+            data:[inc,exp,inv], 
+            backgroundColor:['#4caf50','#ff6b6b','#9c27b0'] 
+        }] 
+    },{ 
+        plugins:{legend:{display:false}}, 
+        scales:{y:{beginAtZero:true}} 
+    });
+
+    // Expense pie chart with click handler
+    const expLabels = Object.keys(expCats);
+    mkChart('cExpPie','doughnut',{ 
+        labels:expLabels, 
+        datasets:[{ 
+            data:Object.values(expCats), 
+            backgroundColor:PIE_COLORS.slice(0, expLabels.length) 
+        }] 
+    },{ 
+        onClick:(event, elements) => {
+            if(elements.length > 0){
+                const idx = elements[0].index;
+                const cat = expLabels[idx];
+                alert(`💸 Expense - ${cat}: ₹${fmt(expCats[cat])}`);
+            }
+        }
+    });
+
+    // Income pie chart with click handler
+    const incLabels = Object.keys(incCats);
+    mkChart('cIncPie','doughnut',{ 
+        labels:incLabels, 
+        datasets:[{ 
+            data:Object.values(incCats), 
+            backgroundColor:['#4caf50','#8bc34a','#cddc39','#ffeb3b','#aed581'] 
+        }] 
+    },{ 
+        onClick:(event, elements) => {
+            if(elements.length > 0){
+                const idx = elements[0].index;
+                const cat = incLabels[idx];
+                alert(`💰 Income - ${cat}: ₹${fmt(incCats[cat])}`);
+            }
+        }
+    });
+
+    // Monthly Trend: Income, Expense, Investment, Savings
     mkChart('cTrend','line',{
         labels:months.map(m=>{ const [y,mo]=m.split('-'); return MONTHS[+mo-1].substring(0,3)+' '+y.substring(2); }),
         datasets:[
             { label:'Income',  data:months.map(m=>monthMap[m].inc), borderColor:'#4caf50', backgroundColor:'rgba(76,175,80,.1)', tension:.4, fill:true },
+            { label:'Expense', data:months.map(m=>monthMap[m].exp), borderColor:'#ff6b6b', backgroundColor:'rgba(255,107,107,.1)', tension:.4, fill:true },
             { label:'Investment', data:months.map(m=>monthMap[m].inv), borderColor:'#9c27b0', backgroundColor:'rgba(156,39,176,.1)', tension:.4, fill:true },
-            { label:'Savings', data:months.map(m=>monthMap[m].inc-monthMap[m].exp), borderColor:'#ff9800', backgroundColor:'rgba(255,152,0,.1)', tension:.4, fill:true }
+            { label:'Savings', data:months.map(m=>monthMap[m].inc-monthMap[m].exp-monthMap[m].inv), borderColor:'#ff9800', backgroundColor:'rgba(255,152,0,.1)', tension:.4, fill:true }
         ]
     }, { scales:{y:{beginAtZero:true}} });
 }
 
 function mkChart(id, type, data, opts){
     if(charts[id]) charts[id].destroy();
+    const defaultOpts = { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}} };
+    const mergedOpts = { ...defaultOpts, ...opts };
     charts[id]=new Chart(document.getElementById(id).getContext('2d'),{
         type, data,
-        options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}}, ...opts }
+        options: mergedOpts
     });
 }
 
@@ -929,7 +1019,7 @@ function loadMonthly(){
     });
 
     const cards = MONTHS.map((name,i)=>{
-        const savings = mData[i].inc - mData[i].exp;
+        const savings = mData[i].inc - mData[i].exp - mData[i].inv;
         const invested = mData[i].inv;
         const hasData = mData[i].inc>0 || mData[i].exp>0 || mData[i].inv>0;
 
@@ -938,7 +1028,7 @@ function loadMonthly(){
         if(i===0){
             compareHtml = `<div class="m-compare same"><span class="arrow">→</span><div class="m-compare-text"><div class="m-compare-amount">—</div><div class="m-compare-from">First month of year</div></div></div>`;
         } else {
-            const prevSavings = mData[i-1].inc - mData[i-1].exp;
+            const prevSavings = mData[i-1].inc - mData[i-1].exp - mData[i-1].inv;
             const diff = savings - prevSavings;
             if(diff===0){
                 compareHtml = `<div class="m-compare same"><span class="arrow">→</span><div class="m-compare-text"><div class="m-compare-amount">Same as ${MONTHS[i-1]}</div><div class="m-compare-from">No change in savings</div></div></div>`;
@@ -958,7 +1048,7 @@ function loadMonthly(){
         }
 
         const savingsClass = savings>0 ? 'positive' : savings<0 ? 'negative' : '';
-        const investmentHtml = invested > 0 ? `<div style="font-size:13px; color:#9c27b0; margin-top:8px;">📈 Invested: ${fmt(invested)}</div>` : '';
+        const investmentHtml = `<div style="font-size:13px; color:#9c27b0; margin-top:8px;">📈 Invested: ${fmt(invested)}</div>`;
 
         return `
         <div class="m-card">
@@ -1090,7 +1180,7 @@ function updateKPIsByFilter(){
             else if(t.type==='investment') inv+=t.amount;
         }
     });
-    const bal = inc - exp;
+    const bal = inc - exp - inv;
     document.getElementById('kIncome').textContent  = fmt(inc);
     document.getElementById('kExpense').textContent = fmt(exp);
     document.getElementById('kInvestment').textContent = fmt(inv);
@@ -1102,6 +1192,83 @@ function resetFilters(){
     document.getElementById('filterMonth').value='';
     document.getElementById('filterYear').value='';
     updateKPIs();
+}
+
+// ─── RECURRING INVESTMENTS ────────────────────────────────
+let recurringInv = {};
+
+function addRecurringInvestment(){
+    const amt = parseFloat(val('recAmt')), cat = val('recCat');
+    const freq = val('recFreq'), start = val('recStart'), desc = val('recDesc');
+    if(!amt || !start){ alert('Fill required fields'); return; }
+    if(!familyCode) return;
+    
+    const id = Date.now().toString();
+    recurringInv[id] = {id, amount:amt, category:cat, frequency:freq, startDate:start, description:desc, active:true, createdAt:new Date().toISOString()};
+    db.ref(`families/${familyCode}/recurringInvestments/${id}`).set(recurringInv[id]).then(()=>{
+        document.getElementById('recAmt').value='';
+        document.getElementById('recCat').value='Mutual Funds';
+        document.getElementById('recFreq').value='monthly';
+        document.getElementById('recStart').value='';
+        document.getElementById('recDesc').value='';
+        renderRecurringInvestments();
+        alert('✅ Recurring investment added!');
+    }).catch(e=>alert('Error: '+e.message));
+}
+
+function renderRecurringInvestments(){
+    const rows = Object.values(recurringInv);
+    if(rows.length===0){
+        document.getElementById('recurringInvContainer').innerHTML = '';
+        return;
+    }
+    
+    const html = `
+    <div style="background:#f3e5f5; border-radius:10px; padding:12px; margin-top:12px;">
+        <h4 style="margin:0 0 10px 0; color:#333; font-size:13px;">📅 Active Recurring</h4>
+        <div style="overflow-x:auto;">
+            <table class="record-table" style="font-size:12px;">
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th>Amount</th>
+                        <th>Frequency</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows.map(r => `
+                        <tr>
+                            <td>${r.category}</td>
+                            <td>₹${fmt(r.amount)}</td>
+                            <td><span style="background:#fff9c4; padding:2px 6px; border-radius:3px; font-size:11px;">${r.frequency}</span></td>
+                            <td>
+                                <button onclick="deleteRecurring('${r.id}')" style="padding:3px 6px; font-size:10px; background:#ff6b6b; color:white; border:none; border-radius:3px; cursor:pointer;">🗑</button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    </div>`;
+    
+    document.getElementById('recurringInvContainer').innerHTML = html;
+}
+
+function deleteRecurring(id){
+    if(!confirm('Delete this recurring investment?')) return;
+    if(!familyCode) return;
+    db.ref(`families/${familyCode}/recurringInvestments/${id}`).remove().then(()=>{
+        delete recurringInv[id];
+        renderRecurringInvestments();
+    }).catch(e=>alert('Error: '+e.message));
+}
+
+function loadRecurringInvestments(){
+    db.ref(`families/${familyCode}/recurringInvestments`).once('value',s=>{
+        recurringInv = s.val() || {};
+        renderRecurringInvestments();
+    });
 }
 
 // ─── MONEY LENT ───────────────────────────────────────────
@@ -1257,7 +1424,8 @@ Object.assign(window,{
     doSearch, saveGoal, loadMonthly, closeModal,
     updateKPIsByFilter, resetFilters,
     addLentRecord, markLentSettled, deleteLent,
-    addLoanRecord, deleteLoan, editLoan
+    addLoanRecord, deleteLoan, editLoan,
+    addRecurringInvestment, deleteRecurring
 });
 
 });// DOMContentLoaded
