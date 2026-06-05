@@ -398,7 +398,8 @@
         </div>
         <button class="btn-primary" onclick="addTransaction()">Add Transaction</button>
 
-        <!-- Recurring Investment Section -->
+        <!-- Recurring Investment Section - Only for Investment Type -->
+        <div id="recurringSection" style="display:none;">
         <hr style="margin:20px 0;border:none;border-top:2px solid #e0e0e0;">
         <h3 style="margin:0;color:#333;font-size:14px;">📅 Recurring Investment</h3>
         <p style="color:#999;font-size:12px;margin:5px 0 12px 0;">Set up automatic investment reminders</p>
@@ -415,6 +416,7 @@
           <button class="btn-primary" onclick="addRecurringInvestment()" style="background:#9c27b0;">➕ Add Recurring</button>
         </div>
         <div id="recurringInvContainer" style="margin-top:15px;"></div>
+        </div>
       </div>
     </div>
 
@@ -439,7 +441,6 @@
       <div class="charts-grid">
         <div class="chart-box"><h4>📊 Income vs Expense</h4><canvas id="cBar"></canvas></div>
         <div class="chart-box"><h4>🥧 Expense by Category</h4><canvas id="cExpPie"></canvas></div>
-        <div class="chart-box"><h4>💵 Income by Category</h4><canvas id="cIncPie"></canvas></div>
         <div class="chart-box"><h4>📈 Monthly Savings Trend</h4><canvas id="cTrend"></canvas></div>
       </div>
     </div>
@@ -762,6 +763,14 @@ function setType(type){
     document.querySelectorAll('.type-btn').forEach(b=>b.classList.remove('active'));
     document.querySelector(`.type-btn.${type}`).classList.add('active');
     setupCats('addCat', type);
+    
+    // Show recurring investment only for investment type
+    const recurringSection = document.getElementById('recurringSection');
+    if(type === 'investment'){
+        recurringSection.style.display = 'block';
+    } else {
+        recurringSection.style.display = 'none';
+    }
 }
 
 async function addTransaction(){
@@ -875,7 +884,7 @@ function openKpi(filter){
     }
     document.getElementById('kpiSummary').innerHTML = summaryHtml;
     document.getElementById('kpiList').innerHTML = items.length
-        ? items.map(t => txCard(t, false)).join('')
+        ? items.map(t => txCard(t, true)).join('')
         : '<div class="empty-state">No transactions found.</div>';
     openModal('kpiModal');
 }
@@ -947,24 +956,6 @@ function renderCharts(){
                 const idx = elements[0].index;
                 const cat = expLabels[idx];
                 alert(`💸 Expense - ${cat}: ₹${fmt(expCats[cat])}`);
-            }
-        }
-    });
-
-    // Income pie chart with click handler
-    const incLabels = Object.keys(incCats);
-    mkChart('cIncPie','doughnut',{ 
-        labels:incLabels, 
-        datasets:[{ 
-            data:Object.values(incCats), 
-            backgroundColor:['#4caf50','#8bc34a','#cddc39','#ffeb3b','#aed581'] 
-        }] 
-    },{ 
-        onClick:(event, elements) => {
-            if(elements.length > 0){
-                const idx = elements[0].index;
-                const cat = incLabels[idx];
-                alert(`💰 Income - ${cat}: ₹${fmt(incCats[cat])}`);
             }
         }
     });
