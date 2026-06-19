@@ -337,6 +337,8 @@
         <option value="">All Years</option>
       </select>
       <button class="btn-primary" style="padding:8px 16px; font-size:13px;" onclick="resetFilters()">Reset</button>
+      
+      <input type="text" id="dashSearch" placeholder="🔍 Search transactions..." style="padding:8px 12px; border:2px solid #ddd; border-radius:8px; font-size:13px; flex:1; min-width:200px; font-family:inherit;" onkeyup="searchDashboard()">
     </div>
   </div>
 
@@ -368,13 +370,11 @@
     <div class="tab-buttons">
       <button class="tab-button active" onclick="switchTab(0)">📊 Dashboard</button>
       <button class="tab-button" onclick="switchTab(1)">➕ Add</button>
-      <button class="tab-button" onclick="switchTab(2)">🔍 Search</button>
-      <button class="tab-button" onclick="switchTab(3)">📈 Charts</button>
-      <button class="tab-button" onclick="switchTab(4)">📅 Monthly</button>
-      <button class="tab-button" onclick="switchTab(5)">🎯 Goals</button>
-      <button class="tab-button" onclick="switchTab(6)">💸 Lent</button>
-      <button class="tab-button" onclick="switchTab(7)">🏦 Loans</button>
-      <button class="tab-button" onclick="switchTab(8)">📊 Analysis</button>
+      <button class="tab-button" onclick="switchTab(2)">📈 Charts</button>
+      <button class="tab-button" onclick="switchTab(3)">📅 Monthly</button>
+      <button class="tab-button" onclick="switchTab(4)">💸 Lent</button>
+      <button class="tab-button" onclick="switchTab(5)">🏦 Loans</button>
+      <button class="tab-button" onclick="switchTab(6)">📊 Analysis</button>
     </div>
 
     <!-- 0: Dashboard -->
@@ -421,23 +421,7 @@
       </div>
     </div>
 
-    <!-- 2: Search -->
-    <div class="tab-content">
-      <h3 style="color:#333;margin-bottom:14px;font-size:16px;">Search & Filter</h3>
-      <div class="search-bar">
-        <input type="text"   id="srText" placeholder="Search description / category…">
-        <select id="srCat"><option value="">All Categories</option></select>
-        <select id="srType">
-          <option value="">All Types</option>
-          <option value="income">Income</option>
-          <option value="expense">Expense</option>
-        </select>
-        <button class="btn-primary" onclick="doSearch()">Search</button>
-      </div>
-      <div id="srList" class="tx-list"></div>
-    </div>
-
-    <!-- 3: Charts -->
+    <!-- 2: Charts -->
     <div class="tab-content">
       <div class="charts-grid">
         <div class="chart-box"><h4>📊 Income vs Expense</h4><canvas id="cBar"></canvas></div>
@@ -446,7 +430,7 @@
       </div>
     </div>
 
-    <!-- 4: Monthly -->
+    <!-- 3: Monthly -->
     <div class="tab-content">
       <div class="monthly-header">
         <label>View Year:</label>
@@ -455,27 +439,7 @@
       <div id="monthlyGrid" class="monthly-grid"></div>
     </div>
 
-    <!-- 5: Goals -->
-    <div class="tab-content">
-      <div class="goal-box">
-        <h3>🎯 Monthly Savings Goal</h3>
-        <div class="goal-input-row">
-          <input type="number" id="goalAmt" placeholder="Enter monthly target (₹)" min="0">
-          <button class="btn-primary" onclick="saveGoal()">Set Goal</button>
-        </div>
-        <div class="goal-progress-track">
-          <div class="goal-progress-fill" id="gFill" style="width:0%"></div>
-        </div>
-        <div class="goal-stats">
-          <div class="goal-stat"><div class="goal-stat-label">Target</div><div class="goal-stat-value" id="gTarget">₹0</div></div>
-          <div class="goal-stat"><div class="goal-stat-label">Saved</div><div class="goal-stat-value" id="gSaved">₹0</div></div>
-          <div class="goal-stat"><div class="goal-stat-label">Remaining</div><div class="goal-stat-value" id="gRem">₹0</div></div>
-          <div class="goal-stat"><div class="goal-stat-label">Progress</div><div class="goal-stat-value" id="gPct">0%</div></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 6: Money Lent -->
+    <!-- 4: Money Lent -->
     <div class="tab-content">
       <div class="section-box lent">
         <h3>💸 Money Lent to Others</h3>
@@ -515,7 +479,7 @@
       </div>
     </div>
 
-    <!-- 7: Loans -->
+    <!-- 5: Loans -->
     <div class="tab-content">
       <div class="section-box loan">
         <h3>🏦 Loans Taken</h3>
@@ -563,7 +527,7 @@
       </div>
     </div>
 
-    <!-- 8: Analysis -->
+    <!-- 6: Analysis -->
     <div class="tab-content">
       <h3 style="color:#333; margin-bottom:16px; font-size:16px;">📊 Financial Analysis & Insights</h3>
       
@@ -1177,10 +1141,10 @@ function loadAnalysis(){
         const sav = inc - exp - inv;
         return `<tr>
             <td style="padding:8px;">${mon} ${y}</td>
-            <td style="padding:8px; text-align:right; color:#4caf50;"><strong>₹${fmt(inc)}</strong></td>
-            <td style="padding:8px; text-align:right; color:#ff6b6b;"><strong>₹${fmt(exp)}</strong></td>
-            <td style="padding:8px; text-align:right; color:#9c27b0;"><strong>₹${fmt(inv)}</strong></td>
-            <td style="padding:8px; text-align:right; color:#ff9800;"><strong>₹${fmt(sav)}</strong></td>
+            <td style="padding:8px; text-align:right; color:#4caf50;"><strong>${fmt(inc)}</strong></td>
+            <td style="padding:8px; text-align:right; color:#ff6b6b;"><strong>${fmt(exp)}</strong></td>
+            <td style="padding:8px; text-align:right; color:#9c27b0;"><strong>${fmt(inv)}</strong></td>
+            <td style="padding:8px; text-align:right; color:#ff9800;"><strong>${fmt(sav)}</strong></td>
         </tr>`;
     }).join('');
     document.getElementById('analysisSummaryTable').innerHTML = summaryHtml || '<tr><td colspan="5" style="text-align:center; padding:12px; color:#999;">No data yet</td></tr>';
@@ -1199,7 +1163,7 @@ function loadAnalysis(){
         const pct = (e[1] / Object.values(expCats).reduce((a,b) => a+b, 0) * 100).toFixed(1);
         return `<div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #ddd;">
             <span>${i+1}. ${e[0]}</span>
-            <span><strong>₹${fmt(e[1])}</strong> (${pct}%)</span>
+            <span><strong>${fmt(e[1])}</strong> (${pct}%)</span>
         </div>`;
     }).join('');
     document.getElementById('analysisTopExpenses').innerHTML = topExpHtml || '<p style="color:#999;">No expenses yet</p>';
@@ -1215,18 +1179,18 @@ function loadAnalysis(){
     const investRate = totalInc > 0 ? (totalInv / totalInc * 100).toFixed(1) : 0;
 
     let insightsHtml = `<div style="display:grid; gap:10px;">`;
-    insightsHtml += `<p>💰 <strong>Total Income:</strong> ₹${fmt(totalInc)}</p>`;
-    insightsHtml += `<p>💸 <strong>Total Expense:</strong> ₹${fmt(totalExp)} (${spendRate}% of income)</p>`;
-    insightsHtml += `<p>📈 <strong>Total Investment:</strong> ₹${fmt(totalInv)} (${investRate}% of income)</p>`;
-    insightsHtml += `<p>💾 <strong>Net Savings:</strong> ₹${fmt(totalSav)}</p>`;
-    insightsHtml += `<p>📊 <strong>Average Monthly Income:</strong> ₹${fmt(avgMonthInc)}</p>`;
-    insightsHtml += `<p>📊 <strong>Average Monthly Expense:</strong> ₹${fmt(avgMonthExp)}</p>`;
+    insightsHtml += `<p>💰 <strong>Total Income:</strong> ${fmt(totalInc)}</p>`;
+    insightsHtml += `<p>💸 <strong>Total Expense:</strong> ${fmt(totalExp)} (${spendRate}% of income)</p>`;
+    insightsHtml += `<p>📈 <strong>Total Investment:</strong> ${fmt(totalInv)} (${investRate}% of income)</p>`;
+    insightsHtml += `<p>💾 <strong>Net Savings:</strong> ${fmt(totalSav)}</p>`;
+    insightsHtml += `<p>📊 <strong>Average Monthly Income:</strong> ${fmt(avgMonthInc)}</p>`;
+    insightsHtml += `<p>📊 <strong>Average Monthly Expense:</strong> ${fmt(avgMonthExp)}</p>`;
     
     if(monthList.length > 1) {
         const lastMonth = monthMap[monthList[monthList.length-1]];
         const prevMonth = monthMap[monthList[monthList.length-2]];
         const expChange = lastMonth.exp - prevMonth.exp;
-        const expChangeStr = expChange > 0 ? `📈 increased by ₹${fmt(Math.abs(expChange))}` : `📉 decreased by ₹${fmt(Math.abs(expChange))}`;
+        const expChangeStr = expChange > 0 ? `📈 increased by ${fmt(Math.abs(expChange))}` : `📉 decreased by ${fmt(Math.abs(expChange))}`;
         insightsHtml += `<p>🔄 <strong>Last Month vs Previous:</strong> Expense ${expChangeStr}</p>`;
     }
     insightsHtml += `</div>`;
@@ -1236,15 +1200,15 @@ function loadAnalysis(){
     const catHtml = `
         <div style="background:#fff; border-radius:8px; padding:12px; border:1px solid #ddd;">
             <div style="color:#4caf50; font-size:13px; font-weight:bold;">💰 Income</div>
-            ${Object.entries(incCats).map(e => `<div style="font-size:12px; padding:4px 0;">${e[0]}: ₹${fmt(e[1])}</div>`).join('')}
+            ${Object.entries(incCats).map(e => `<div style="font-size:12px; padding:4px 0;">${e[0]}: ${fmt(e[1])}</div>`).join('')}
         </div>
         <div style="background:#fff; border-radius:8px; padding:12px; border:1px solid #ddd;">
             <div style="color:#ff6b6b; font-size:13px; font-weight:bold;">💸 Expense</div>
-            ${Object.entries(expCats).map(e => `<div style="font-size:12px; padding:4px 0;">${e[0]}: ₹${fmt(e[1])}</div>`).join('')}
+            ${Object.entries(expCats).map(e => `<div style="font-size:12px; padding:4px 0;">${e[0]}: ${fmt(e[1])}</div>`).join('')}
         </div>
         <div style="background:#fff; border-radius:8px; padding:12px; border:1px solid #ddd;">
             <div style="color:#9c27b0; font-size:13px; font-weight:bold;">📈 Investment</div>
-            ${Object.entries(invCats).map(e => `<div style="font-size:12px; padding:4px 0;">${e[0]}: ₹${fmt(e[1])}</div>`).join('') || '<div style="font-size:12px; color:#999;">No investments yet</div>'}
+            ${Object.entries(invCats).map(e => `<div style="font-size:12px; padding:4px 0;">${e[0]}: ${fmt(e[1])}</div>`).join('') || '<div style="font-size:12px; color:#999;">No investments yet</div>'}
         </div>
     `;
     document.getElementById('analysisCategories').innerHTML = catHtml;
@@ -1256,7 +1220,7 @@ function switchTab(i){
     document.querySelectorAll('.tab-content').forEach((c,j)=>c.classList.toggle('active',i===j));
     if(i===3) setTimeout(renderCharts,100);
     if(i===4) loadMonthly();
-    if(i===8) loadAnalysis();
+    if(i===6) loadAnalysis();
 }
 
 function setupCats(selectId, type){
@@ -1334,7 +1298,35 @@ function updateKPIsByFilter(){
 function resetFilters(){
     document.getElementById('filterMonth').value='';
     document.getElementById('filterYear').value='';
+    document.getElementById('dashSearch').value='';
     updateKPIs();
+}
+
+function searchDashboard(){
+    const searchTerm = val('dashSearch').toLowerCase();
+    if(!searchTerm) {
+        updateKPIs();
+        return;
+    }
+    
+    // Filter transactions matching search term
+    let inc=0, exp=0, inv=0;
+    Object.values(allTx).forEach(t => {
+        const matches = t.category.toLowerCase().includes(searchTerm) || 
+                       (t.description || '').toLowerCase().includes(searchTerm);
+        if(matches) {
+            if(t.type==='income') inc+=t.amount;
+            else if(t.type==='expense') exp+=t.amount;
+            else if(t.type==='investment') inv+=t.amount;
+        }
+    });
+    
+    const bal = inc - exp - inv;
+    document.getElementById('kIncome').textContent  = fmt(inc);
+    document.getElementById('kExpense').textContent = fmt(exp);
+    document.getElementById('kInvestment').textContent = fmt(inv);
+    document.getElementById('kBalance').textContent = fmt(bal);
+    document.getElementById('kSavings').textContent = fmt(bal);
 }
 
 // ─── RECURRING INVESTMENTS ────────────────────────────────
