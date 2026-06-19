@@ -1304,21 +1304,26 @@ function resetFilters(){
 
 function searchDashboard(){
     const searchTerm = val('dashSearch').toLowerCase();
+    
     if(!searchTerm) {
         updateKPIs();
+        renderDashList();
         return;
     }
     
-    // Filter transactions matching search term
+    // Get sorted transactions and filter them
+    const allSorted = sorted(allTx);
+    const filteredTx = allSorted.filter(t => 
+        t.category.toLowerCase().includes(searchTerm) || 
+        (t.description || '').toLowerCase().includes(searchTerm)
+    );
+    
+    // Calculate KPIs from filtered transactions
     let inc=0, exp=0, inv=0;
-    Object.values(allTx).forEach(t => {
-        const matches = t.category.toLowerCase().includes(searchTerm) || 
-                       (t.description || '').toLowerCase().includes(searchTerm);
-        if(matches) {
-            if(t.type==='income') inc+=t.amount;
-            else if(t.type==='expense') exp+=t.amount;
-            else if(t.type==='investment') inv+=t.amount;
-        }
+    filteredTx.forEach(t => {
+        if(t.type==='income') inc+=t.amount;
+        else if(t.type==='expense') exp+=t.amount;
+        else if(t.type==='investment') inv+=t.amount;
     });
     
     const bal = inc - exp - inv;
@@ -1327,6 +1332,12 @@ function searchDashboard(){
     document.getElementById('kInvestment').textContent = fmt(inv);
     document.getElementById('kBalance').textContent = fmt(bal);
     document.getElementById('kSavings').textContent = fmt(bal);
+    
+    // Display filtered transactions
+    const list = filteredTx.slice(0,15);
+    document.getElementById('dashTxList').innerHTML = list.length
+        ? list.map(t => txCard(t, true)).join('')
+        : `<div class="empty-state">No transactions found for "${searchTerm}"</div>`;
 }
 
 // ─── RECURRING INVESTMENTS ────────────────────────────────
