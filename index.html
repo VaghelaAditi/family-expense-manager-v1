@@ -336,6 +336,9 @@
       <select id="filterYear" onchange="updateKPIsByFilter()">
         <option value="">All Years</option>
       </select>
+      <select id="filterCat" onchange="filterByCategory()">
+        <option value="">All Categories</option>
+      </select>
       <button class="btn-primary" style="padding:8px 16px; font-size:13px;" onclick="resetFilters()">Reset</button>
       
       <input type="text" id="dashSearch" placeholder="🔍 Search transactions..." style="padding:8px 12px; border:2px solid #ddd; border-radius:8px; font-size:13px; flex:1; min-width:200px; font-family:inherit;" onkeyup="searchDashboard()">
@@ -730,10 +733,17 @@ function updateKPIs(){
 
 // ─── DASHBOARD LIST ──────────────────────────────────────
 function renderDashList(){
-    const list = sorted(allTx).slice(0,15);
+    const catFilter = val('filterCat');
+    let list = sorted(allTx);
+    
+    // Filter by category if selected
+    if(catFilter) {
+        list = list.filter(t => t.category === catFilter);
+    }
+    
     document.getElementById('dashTxList').innerHTML = list.length
         ? list.map(t => txCard(t, true)).join('')
-        : '<div class="empty-state">No transactions yet. Add one in ➕ Add tab!</div>';
+        : '<div class="empty-state">No transactions. Add one in ➕ Add tab!</div>';
 }
 
 // ─── TX CARD HTML ─────────────────────────────────────────
@@ -915,9 +925,21 @@ function doSearch(){
 
 function populateSrCats(){
     const cats = [...new Set(Object.values(allTx).map(t=>t.category))];
-    document.getElementById('srCat').innerHTML =
-        '<option value="">All Categories</option>' +
-        cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+    // Populate search categories (if it exists)
+    const srCatEl = document.getElementById('srCat');
+    if(srCatEl) {
+        srCatEl.innerHTML =
+            '<option value="">All Categories</option>' +
+            cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+    }
+    
+    // Populate filter categories
+    const filterCatEl = document.getElementById('filterCat');
+    if(filterCatEl) {
+        filterCatEl.innerHTML =
+            '<option value="">All Categories</option>' +
+            cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+    }
 }
 
 // ─── CHARTS ───────────────────────────────────────────────
@@ -1273,33 +1295,47 @@ function populateMonthYearSelects(){
 }
 
 function updateKPIsByFilter(){
-    const filterMo = val('filterMonth'), filterYr = val('filterYear');
+    const filterMo = val('filterMonth'), filterYr = val('filterYear'), filterCat = val('filterCat');
     let inc=0, exp=0, inv=0;
+    let filteredTx = [];
+    
     Object.values(allTx).forEach(t=>{
         const d = new Date(t.date);
         const mo = String(d.getMonth()).padStart(2,'0');
         const yr = d.getFullYear();
         const matchMo = !filterMo || mo===filterMo;
         const matchYr = !filterYr || yr===parseInt(filterYr);
-        if(matchMo && matchYr){
+        const matchCat = !filterCat || t.category===filterCat;
+        
+        if(matchMo && matchYr && matchCat){
+            filteredTx.push(t);
             if(t.type==='income') inc+=t.amount;
             else if(t.type==='expense') exp+=t.amount;
             else if(t.type==='investment') inv+=t.amount;
         }
     });
+    
     const bal = inc - exp - inv;
     document.getElementById('kIncome').textContent  = fmt(inc);
     document.getElementById('kExpense').textContent = fmt(exp);
     document.getElementById('kInvestment').textContent = fmt(inv);
     document.getElementById('kBalance').textContent = fmt(bal);
     document.getElementById('kSavings').textContent = fmt(bal);
+    
+    // Update transaction list with filtered results
+    const sortedFiltered = filteredTx.sort((a,b) => new Date(b.date) - new Date(a.date));
+    document.getElementById('dashTxList').innerHTML = sortedFiltered.length
+        ? sortedFiltered.map(t => txCard(t, true)).join('')
+        : '<div class="empty-state">No transactions matching filters</div>';
 }
 
 function resetFilters(){
     document.getElementById('filterMonth').value='';
     document.getElementById('filterYear').value='';
+    document.getElementById('filterCat').value='';
     document.getElementById('dashSearch').value='';
     updateKPIs();
+    renderDashList();
 }
 
 function searchDashboard(){
@@ -1333,11 +1369,43 @@ function searchDashboard(){
     document.getElementById('kBalance').textContent = fmt(bal);
     document.getElementById('kSavings').textContent = fmt(bal);
     
-    // Display filtered transactions
-    const list = filteredTx.slice(0,15);
-    document.getElementById('dashTxList').innerHTML = list.length
-        ? list.map(t => txCard(t, true)).join('')
+    // Display ALL filtered transactions
+    document.getElementById('dashTxList').innerHTML = filteredTx.length
+        ? filteredTx.map(t => txCard(t, true)).join('')
         : `<div class="empty-state">No transactions found for "${searchTerm}"</div>`;
+}
+
+function filterByCategory(){
+    const catFilter = val('filterCat');
+    if(!catFilter) {
+        updateKPIs();
+        renderDashList();
+        return;
+    }
+    
+    // Filter all transactions by category
+    const allSorted = sorted(allTx);
+    const filteredTx = allSorted.filter(t => t.category === catFilter);
+    
+    // Calculate KPIs from filtered transactions
+    let inc=0, exp=0, inv=0;
+    filteredTx.forEach(t => {
+        if(t.type==='income') inc+=t.amount;
+        else if(t.type==='expense') exp+=t.amount;
+        else if(t.type==='investment') inv+=t.amount;
+    });
+    
+    const bal = inc - exp - inv;
+    document.getElementById('kIncome').textContent  = fmt(inc);
+    document.getElementById('kExpense').textContent = fmt(exp);
+    document.getElementById('kInvestment').textContent = fmt(inv);
+    document.getElementById('kBalance').textContent = fmt(bal);
+    document.getElementById('kSavings').textContent = fmt(bal);
+    
+    // Display ALL filtered transactions
+    document.getElementById('dashTxList').innerHTML = filteredTx.length
+        ? filteredTx.map(t => txCard(t, true)).join('')
+        : `<div class="empty-state">No transactions in "${catFilter}" category</div>`;
 }
 
 // ─── RECURRING INVESTMENTS ────────────────────────────────
@@ -1568,7 +1636,7 @@ Object.assign(window,{
     toggleMode, logout, switchTab, setType, setEditType,
     addTransaction, openEdit, saveEdit, deleteTx, openKpi,
     doSearch, saveGoal, loadMonthly, closeModal,
-    updateKPIsByFilter, resetFilters,
+    updateKPIsByFilter, resetFilters, filterByCategory, searchDashboard,
     addLentRecord, markLentSettled, deleteLent,
     addLoanRecord, deleteLoan, editLoan,
     addRecurringInvestment, deleteRecurring
