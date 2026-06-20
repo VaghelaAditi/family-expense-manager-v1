@@ -979,12 +979,15 @@ function renderCharts(){
         scales:{y:{beginAtZero:true}} 
     });
 
-    // Expense pie chart with click handler - shows details without hiding
-    const expLabels = Object.keys(expCats);
+    // Expense pie chart - SORTED BY AMOUNT DESCENDING
+    const expSorted = Object.entries(expCats).sort((a,b) => b[1]-a[1]);
+    const expLabels = expSorted.map(e => e[0]);
+    const expValues = expSorted.map(e => e[1]);
+    
     mkChart('cExpPie','doughnut',{ 
         labels:expLabels, 
         datasets:[{ 
-            data:Object.values(expCats), 
+            data:expValues, 
             backgroundColor:PIE_COLORS.slice(0, expLabels.length),
             borderWidth: 2,
             borderColor: '#fff'
@@ -994,7 +997,7 @@ function renderCharts(){
             if(elements.length > 0){
                 const idx = elements[0].index;
                 const cat = expLabels[idx];
-                alert(`💸 Expense - ${cat}: ₹${fmt(expCats[cat])}`);
+                alert(`💸 Expense - ${cat}: ₹${fmt(expValues[idx])}`);
             }
         },
         plugins: {
